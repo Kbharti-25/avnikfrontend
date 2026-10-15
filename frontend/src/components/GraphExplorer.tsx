@@ -33,17 +33,6 @@ interface GraphExplorerProps {
   setTimeRange?: (tr: string) => void;
 }
 
-interface HoverTooltipData {
-  x: number;
-  y: number;
-  type: 'node' | 'edge';
-  title: string;
-  subtitle: string;
-  badge?: string;
-  badgeColor?: string;
-  details: { label: string; value: string }[];
-}
-
 export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   nodes,
   edges,
@@ -68,9 +57,8 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('ALL');
-  // Labels are hidden by default to keep the graph ultra-clean and modern; hover reveals them dynamically
+  // Labels are hidden by default to keep the graph ultra-clean; hovering over any node/edge dynamically shows its label on canvas
   const [showLabels, setShowLabels] = useState(false);
-  const [hoverData, setHoverData] = useState<HoverTooltipData | null>(null);
 
   // Filter visible nodes
   const visibleNodes = useMemo(() => {
@@ -270,7 +258,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'shape': 'octagon',
           },
         },
-        // Interactive Hover State on Node: reveals label with animation and gentle halo
+        // Interactive Hover State on Node: reveals label directly on canvas with smooth halo
         {
           selector: '.hovered-node',
           style: {
@@ -285,7 +273,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'border-width': 3.5,
             'border-color': '#FFFFFF',
             'underlay-color': 'data(color)',
-            'underlay-padding': 10,
+            'underlay-padding': 8,
             'underlay-opacity': 0.45,
             'z-index': 9999,
           } as any,
@@ -336,7 +324,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'transition-duration': 0.25,
           },
         },
-        // Interactive Hover State on Edge: reveals label with animation
+        // Interactive Hover State on Edge: reveals label directly on connection
         {
           selector: '.hovered-edge',
           style: {
@@ -346,7 +334,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'font-weight': 700,
             'text-outline-width': 2,
             'text-outline-color': '#060E0B',
-            'width': 3.6,
+            'width': 3.5,
             'underlay-color': 'data(lineColor)',
             'underlay-padding': 6,
             'underlay-opacity': 0.45,
@@ -425,75 +413,23 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       }
     });
 
-    // Hover Event Handlers: Add animation classes & display floating tooltip
+    // Hover Event Handlers: Highlight node/edge directly on canvas (NO HTML popup div)
     cy.on('mouseover', 'node', (evt: EventObject) => {
-      const target = evt.target;
-      target.addClass('hovered-node');
-      target.connectedEdges().addClass('hovered-edge');
-
-      const data = target.data();
-      const nodeData = nodes.find((n) => n.id === data.id);
-      if (!nodeData || !containerRef.current) return;
-
-      const pos = target.renderedPosition();
-      const roleLabel = nodeData.role 
-        ? nodeData.role.replace(/_/g, ' ').toUpperCase()
-        : nodeData.type.toUpperCase();
-
-      const details: { label: string; value: string }[] = [];
-      if (nodeData.upiId) details.push({ label: 'UPI VPA', value: nodeData.upiId });
-      if (nodeData.bankName) details.push({ label: 'Bank', value: nodeData.bankName });
-      if (nodeData.accountNo) details.push({ label: 'Account', value: nodeData.accountNo });
-      if (nodeData.deviceId) details.push({ label: 'Device ID', value: nodeData.deviceId });
-      if (nodeData.disputeAmount) details.push({ label: 'Dispute', value: `₹${nodeData.disputeAmount.toLocaleString('en-IN')}` });
-
-      setHoverData({
-        x: pos.x,
-        y: pos.y,
-        type: 'node',
-        title: nodeData.label,
-        subtitle: nodeData.subText || roleLabel,
-        badge: `Risk: ${nodeData.riskScore}/100`,
-        badgeColor: nodeData.riskScore > 75 ? 'bg-rose-500 text-white' : nodeData.riskScore > 40 ? 'bg-amber-500 text-black' : 'bg-emerald-500 text-white',
-        details,
-      });
+      evt.target.addClass('hovered-node');
+      evt.target.connectedEdges().addClass('hovered-edge');
     });
 
     cy.on('mouseout', 'node', (evt: EventObject) => {
       evt.target.removeClass('hovered-node');
       evt.target.connectedEdges().removeClass('hovered-edge');
-      setHoverData(null);
     });
 
     cy.on('mouseover', 'edge', (evt: EventObject) => {
-      const target = evt.target;
-      target.addClass('hovered-edge');
-
-      const data = target.data();
-      const edgeData = edges.find((e) => e.id === data.id);
-      if (!edgeData || !containerRef.current) return;
-
-      const pos = target.midpoint();
-      const details: { label: string; value: string }[] = [];
-      if (edgeData.utr) details.push({ label: 'UTR', value: edgeData.utr });
-      if (edgeData.channel) details.push({ label: 'Channel', value: edgeData.channel });
-      if (edgeData.ruleTriggered) details.push({ label: 'Rule', value: edgeData.ruleTriggered });
-
-      setHoverData({
-        x: pos.x,
-        y: pos.y,
-        type: 'edge',
-        title: edgeData.amount > 0 ? `₹${edgeData.amount.toLocaleString('en-IN')}` : edgeData.channel,
-        subtitle: `${edgeData.source} → ${edgeData.target}`,
-        badge: edgeData.isSuspicious ? 'Flagged Hop' : 'Standard',
-        badgeColor: edgeData.isSuspicious ? 'bg-rose-500 text-white' : 'bg-slate-500 text-white',
-        details,
-      });
+      evt.target.addClass('hovered-edge');
     });
 
     cy.on('mouseout', 'edge', (evt: EventObject) => {
       evt.target.removeClass('hovered-edge');
-      setHoverData(null);
     });
 
     // Subtle ambient breathing animation for primary mule hub to keep canvas alive
@@ -717,39 +653,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
 
         {/* Cytoscape Container */}
         <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
-
-        {/* Animated Hover Tooltip Card (Smooth Fade, Zoom, and Glassmorphic glow) */}
-        {hoverData && (
-          <div
-            className={`absolute z-30 pointer-events-none p-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-200 transform scale-100 ease-out text-xs w-64 animate-in fade-in zoom-in-95 ${
-              theme === 'dark'
-                ? 'bg-[#091713]/95 border-[#173D30] text-slate-100 shadow-emerald-950/40'
-                : 'bg-white/95 border-slate-200 text-slate-800 shadow-xl'
-            }`}
-            style={{
-              left: `${Math.min(Math.max(hoverData.x + 18, 16), (containerRef.current?.clientWidth || 500) - 275)}px`,
-              top: `${Math.min(Math.max(hoverData.y - 30, 16), (containerRef.current?.clientHeight || 400) - 190)}px`,
-            }}
-          >
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <span className="font-bold truncate text-[13px] tracking-tight">{hoverData.title}</span>
-              {hoverData.badge && (
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 shadow-xs ${hoverData.badgeColor}`}>
-                  {hoverData.badge}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mb-2 truncate">{hoverData.subtitle}</p>
-            <div className="space-y-1.5 border-t border-inherit pt-2 text-[10px]">
-              {hoverData.details.map((d, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className="text-slate-400">{d.label}:</span>
-                  <span className="font-mono font-semibold truncate max-w-[145px] text-slate-200">{d.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Floating Bottom Toolbar */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-lg transition-all bg-[#091713]/90 border-[#18362B]">

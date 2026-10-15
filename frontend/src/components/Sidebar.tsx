@@ -24,74 +24,113 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`w-36 shrink-0 flex flex-col items-start px-3 py-4 space-y-4 select-none z-10 ${
+      className={`w-16 shrink-0 flex flex-col items-center py-4 space-y-3.5 select-none z-20 ${
         theme === 'dark'
           ? 'bg-[#060E0B] text-slate-300'
           : 'bg-[#F4F7F5] text-slate-700'
       }`}
     >
-      {/* 1. Main Network Graph Active Button */}
-      <button
-        onClick={() => onToggleDrawer(activeDrawer ? (null as any) : 'complaints')}
-        title="Interactive Network Graph"
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
-          theme === 'dark'
-            ? 'bg-[#0D241C] border border-[#10B981] text-[#10B981] shadow-xs'
-            : 'bg-emerald-50 border border-emerald-600 text-emerald-700 shadow-xs'
-        }`}
-      >
-        <Network className="w-5 h-5 stroke-[2.2]" />
-      </button>
+      {/* 1. Main Network Graph Active Button (Icon Only with Hover Tooltip) */}
+      <div className="relative group">
+        <button
+          onClick={() => onToggleDrawer(activeDrawer ? (null as any) : 'complaints')}
+          title="Network Graph"
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
+            theme === 'dark'
+              ? 'bg-[#0D241C] border border-[#10B981] text-[#10B981] shadow-xs'
+              : 'bg-emerald-50 border border-emerald-600 text-emerald-700 shadow-xs'
+          }`}
+        >
+          <Network className="w-5 h-5 stroke-[2.2]" />
+        </button>
 
-      {/* 2. Complaints Button */}
-      <button
-        onClick={() => onToggleDrawer('complaints')}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all btn-press ${
-          activeDrawer === 'complaints'
-            ? theme === 'dark'
-              ? 'bg-[#0D241C] border-[#10B981] text-emerald-300 font-bold shadow-xs'
-              : 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold shadow-xs'
-            : theme === 'dark'
-            ? 'bg-[#0A1612] border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
-            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
-        }`}
-      >
-        <span className="truncate">Complaints</span>
-      </button>
+        {/* Hover Tooltip */}
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-150 z-50 shadow-xl bg-[#0B1A15] border border-[#183B2E] text-white">
+          <span>Network Graph</span>
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#0B1A15]" />
+        </div>
+      </div>
 
-      {/* 3. Timeline Button */}
-      <button
-        onClick={() => onToggleDrawer('timeline')}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all btn-press ${
-          activeDrawer === 'timeline'
-            ? theme === 'dark'
-              ? 'bg-[#0D241C] border-[#10B981] text-emerald-300 font-bold shadow-xs'
-              : 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold shadow-xs'
-            : theme === 'dark'
-            ? 'bg-[#0A1612] border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
-            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
-        }`}
-      >
-        <Clock className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-        <span className="truncate">Timeline</span>
-      </button>
+      {/* 2. Complaints Button (Icon Only with Hover Tooltip) */}
+      <div className="relative group">
+        <button
+          onClick={() => onToggleDrawer('complaints')}
+          title="Complaints"
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
+            activeDrawer === 'complaints'
+              ? theme === 'dark'
+                ? 'bg-[#0D241C] border border-[#10B981] text-[#34D399] shadow-xs'
+                : 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
+              : theme === 'dark'
+              ? 'bg-[#0A1612] border border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
+              : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          {complaintCount > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#060E0B]" />
+          )}
+        </button>
 
-      {/* 4. Past Record Button */}
-      <button
-        onClick={() => onToggleDrawer('summary')}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all btn-press ${
-          activeDrawer === 'summary'
-            ? theme === 'dark'
-              ? 'bg-[#0D241C] border-[#10B981] text-emerald-300 font-bold shadow-xs'
-              : 'bg-emerald-50 border-emerald-600 text-emerald-800 font-bold shadow-xs'
-            : theme === 'dark'
-            ? 'bg-[#0A1612] border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
-            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
-        }`}
-      >
-        <History className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-        <span className="truncate">Past Record</span>
-      </button>
+        {/* Hover Tooltip */}
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-150 z-50 shadow-xl bg-[#0B1A15] border border-[#183B2E] text-white flex items-center gap-1.5">
+          <span>Complaints</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-950 text-rose-300 border border-rose-800 font-bold">
+            {complaintCount}
+          </span>
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#0B1A15]" />
+        </div>
+      </div>
+
+      {/* 3. Timeline Button (Icon Only with Hover Tooltip) */}
+      <div className="relative group">
+        <button
+          onClick={() => onToggleDrawer('timeline')}
+          title="Timeline"
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
+            activeDrawer === 'timeline'
+              ? theme === 'dark'
+                ? 'bg-[#0D241C] border border-[#10B981] text-[#34D399] shadow-xs'
+                : 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
+              : theme === 'dark'
+              ? 'bg-[#0A1612] border border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
+              : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+        </button>
+
+        {/* Hover Tooltip */}
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-150 z-50 shadow-xl bg-[#0B1A15] border border-[#183B2E] text-white">
+          <span>Timeline</span>
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#0B1A15]" />
+        </div>
+      </div>
+
+      {/* 4. Past Record Button (Icon Only with Hover Tooltip) */}
+      <div className="relative group">
+        <button
+          onClick={() => onToggleDrawer('summary')}
+          title="Past Record"
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
+            activeDrawer === 'summary'
+              ? theme === 'dark'
+                ? 'bg-[#0D241C] border border-[#10B981] text-[#34D399] shadow-xs'
+                : 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
+              : theme === 'dark'
+              ? 'bg-[#0A1612] border border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
+              : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
+          }`}
+        >
+          <History className="w-4 h-4" />
+        </button>
+
+        {/* Hover Tooltip */}
+        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-150 z-50 shadow-xl bg-[#0B1A15] border border-[#183B2E] text-white">
+          <span>Past Record</span>
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#0B1A15]" />
+        </div>
+      </div>
     </aside>
   );
 };
