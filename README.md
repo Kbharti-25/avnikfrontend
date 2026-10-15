@@ -1,122 +1,153 @@
-# Anvik
+# Anvik 2.0 — UPI Fraud-Ring Graph Investigator
 
-> **PS 16 — UPI Fraud-Ring Graph Investigator**  
+> **PS 16 — UPI Fraud-Ring Graph Investigator with Explainable Alerts**  
 > *Code-e-Manipal Hackathon Project*
 
 ---
 
 ## 1. Project Identity and Objective
 
-**Anvik** is an investigative decision-support system designed to detect and explore coordinated UPI fraud patterns across interconnected synthetic transaction entities (accounts, devices, merchants, and complaints).
+**Anvik 2.0** is an interactive, government-grade financial crime decision-support system designed to detect, explore, and disrupt coordinated UPI fraud syndicates across interconnected financial entities (accounts, devices, collect requests, merchants, and complaints).
 
-Anvik constructs a graph of synthetic financial interactions to surface explainable, evidence-backed transaction clusters, timeline anomalies, and counterfactual insights for fraud analysts and investigators.
+Anvik constructs high-fidelity transaction network topologies to surface explainable, evidence-backed transaction clusters, multi-hop structuring flows, hardware device farms, and counterfactual simulation insights for cybercrime investigators, banking fraud desks, and law enforcement agencies (LEAs).
 
 > [!IMPORTANT]
-> **Investigative Decision Support Only**: Anvik is an analytical aid for investigators, not an automated system for declaring individuals guilty. Suspicious alerts and graph anomalies represent investigative leads, not legal proof of wrongdoing.
+> **Investigative Decision Support Only**: Anvik is an analytical aid for human investigators, not an automated system for declaring individuals guilty. Suspicious alerts, shared hardware links, and graph anomalies represent deterministic investigative leads, not automated legal proof of wrongdoing.
 
 > [!NOTE]
-> **Synthetic Data Policy**: Anvik exclusively operates on synthetic transaction datasets. It does not connect to real banking infrastructure, payment gateways, or live customer financial records.
+> **Synthetic Data Policy**: Anvik exclusively operates on synthetic transaction datasets. It does not connect to real banking infrastructure, live payment switches, or personal financial records.
 
 ---
 
-## 2. Planned Features
+## 2. Key Architecture & Features
 
-- **Interactive Transaction Graphs**: Dynamic exploration of accounts, devices, merchants, and transactions using Cytoscape.js.
-- **Evidence-Linked Alerts**: Transparent priority scoring that explains why a pattern was flagged with exact supporting evidence.
-- **Transaction Timelines**: Visual chronological progression of transactions, identifying rapid dispersion or cycling.
-- **Complaint Associations**: Linking formal complaints and dispute reports to transaction entities and clusters.
-- **Explainable Detection Rules**: Deterministic rules identifying structuring, shared device misuse, mule routing, and circular funds.
-- **Counterfactual Analysis**: Investigating hypothetical scenarios (e.g., removing a bridge node or modifying a link) to evaluate cluster fragility.
-- **Case Management**: Workflow tools to track ongoing investigations, bookmark entities, and record analyst findings.
+### 1. Government-Grade Financial Crime Network Graph (`NetworkGraphCanvas.tsx`)
+- **Visual Hierarchy & Canvas Style**:
+  - Crisp Warm Ivory / Editorial Off-White surface (`#FBF9F4`) with a subtle 20px faint slate dot-grid (`#E2DFD7` at 40% opacity).
+  - Floating canvas controls for **Zoom In (+)**, **Zoom Out (-)**, and **Fit-to-Screen / Recenter**.
+  - Top sub-header: `TRANSACTION NETWORK / UPI NETWORK / Evidence map` with a live entity counter badge (`• 9 entities · 9 relationships`).
+  - Fixed bottom legend bar with minimalist glyph markers:
+    `[○ UPI account]   [▢ Device]   [○ Collect request]   [○ Potential mule]`
+- **Custom Node Topologies**:
+  - **UPI Account Node**: 48px circular white badge with solid 2px Emerald/Teal ring (`#007065`), centered user silhouette glyph, entity role in bold 11px slate-800 (`Origin account`, `Linked account`), and VPA handle (`ananya-42@upi`, `priya-18@okhdfc`).
+  - **Device Node**: 42px × 52px rounded rectangle (`rx: 10px`) in `#F8FAFC` with 1.5px border (`#94A3B8`), smartphone glyph, and hardware token (`DEV-7F3A9C`, `DEV-208101`).
+  - **Collect Request Node**: 48px × 48px rounded square (`rx: 12px`) in warm amber (`#FEF3C7`) with 1.5px amber stroke (`#D97706`), bidirectional transfer arrows (⇅), and reference code (`COL-008412`).
+  - **Potential Mule Account Node**: 50px circular badge in soft rose (`#FFF1F2`) with 2px Coral/Crimson ring (`#E11D48`), bank/ATM card glyph, role text in rose-700 (`Potential mule`), and VPA handle (`ravi-18@ybl`, `kiran-913@paytm`, `vikram-55@sbi`, `deepak-77@icici`).
+- **Edge Dynamics & Money Flow Motion**:
+  - **Transaction Transfer Edges**: Solid curved bezier lines in teal (`#007065`, 2px stroke) with directional arrowheads, rounded white pill labels showing exact amounts (`₹24,500`, `₹16,000`, `₹7,800`, `₹7,500`), and continuous 3px glowing circular particles streaming at 1.5s intervals via hardware-accelerated SVG `<animateMotion>`.
+  - **Device Association Edges**: Dashed curved gray lines (`#94A3B8`, `stroke-dasharray: "4 4"`) animated with continuous flowing stroke-dashoffset motion.
+- **Interactive Focus States**:
+  - **Hover Micro-Card**: Scale effect (1.08x) with soft shadow displaying node type, identifier, active connection count, and activity timestamp.
+  - **Click Isolation**: Selecting any node isolates its direct 1st-degree upstream and downstream relationships, dimming unselected nodes and unconnected edges to 20% opacity. Clicking empty canvas restores full visibility.
+
+### 2. Transaction Timeline Integration (`TransactionTimelineBar.tsx`)
+- Positioned flush beneath the graph canvas in a dedicated card.
+- **Controls**: Reset (↺), Play/Pause (▷ / ||), and active IST time ticker (`09:32:00` → `09:34:45`).
+- **Interactive Scrubber**: Full-width track with played section filled in teal (`#007065`), interactive thumb, and 5 timestamp scale markers (`09:32:00`, `09:32:41`, `09:33:22`, `09:34:03`, `09:34:45`).
+- **Motion Synchronization**: Scrubbing or playing the timeline reveals transactions chronologically. Nodes and transfer edges scale in dynamically as the scrubber passes their timestamp.
+- **Legal Footnote**: `🛡️ Risk informs judgement. It does not replace it.`
+
+### 3. Investigation Insights Rail (`InvestigationInsightsRail.tsx`)
+- Reserved 20%–25% right-hand rail.
+- **Selected Node Dossier Inspector**: Role badge, VPA / Hardware fingerprint, bank name, anomaly risk meter (0–100), and 1st-degree incident linkages.
+- **Counterfactual Simulation**: "Simulate Immediate Freeze" button to model cluster disruption by severing compromised accounts.
+- **Network Overview KPIs**: Aggregated Disputed Volume (₹48,300), Structuring Velocity (< 3 mins), Identified Mules (3), and Shared Hardware Farm (1).
+- **Explainable Detection Signals**:
+  1. `RAPID_DISPERSION_CHURN`: Aggregator `ravi-18@ybl` split ₹23,800 across 2 secondary mules in 41 seconds.
+  2. `DEVICE_COLLUSION_FARM`: Physical device `DEV-7F3A9C` authenticated across 3 distinct mule VPAs.
+  3. `COLLECT_REQUEST_DRAIN`: Collect request `COL-008412` initiated without standard user 2FA delay.
+
+### 4. Comprehensive Forensic Report Generator (`reportGenerator.ts`)
+- One-click **"Download Report"** button available in the top navigation bar, the graph toolbar, and the summary drawer.
+- Captures high-resolution canvas snapshot of the network graph.
+- Generates a standalone, courtroom-grade HTML forensic dossier containing:
+  - Incident synopsis & executive classification (`INV-2026-084`).
+  - High-res embedded graph topology image with visual legend.
+  - Quantitative KPI metrics table.
+  - Complete 11-entity suspect registry and risk scoring breakdown.
+  - Multi-hop transaction ledger with UTRs and detection heuristics.
+  - NCRP dispute complaints register.
+  - Actionable LEA and PSP banking directives (Section 91 CrPC, NPCI central switch freeze, IMEI blacklisting, and merchant settlement hold).
+  - Print-ready CSS for direct 1-click A4 PDF export (`window.print()`).
 
 ---
 
-## 3. Planned Technology Stack
+## 3. Technology Stack
 
-### Frontend (Owned by Members 1 & 2)
+### Frontend (Active)
 - **Framework & Language**: React 18 / TypeScript
 - **Tooling & Build**: Vite
-- **Styling & UI**: Tailwind CSS, shadcn/ui, Lucide React
-- **Routing**: React Router
-- **Graph Visualization**: Cytoscape.js
-- **Testing**: Vitest, React Testing Library
+- **Styling**: Tailwind CSS
+- **Visualization**: Custom SVG / Canvas Network Engine + Cytoscape.js
+- **Icons**: Lucide React
+- **State & Storage**: React Context + LocalStorage persistence for complaints
 
-### Backend (Owned by Bharath)
+### Backend & Detection Engine (Sole Owner: Bharath K)
 - **Language & Runtime**: Python 3.11+
 - **API Framework**: FastAPI, Uvicorn, Pydantic
-- **Database & ORM**: PostgreSQL, SQLAlchemy, Alembic
-- **Graph Engine & Processing**: NetworkX, Pandas, NumPy
-- **Testing & Verification**: pytest, HTTPX
-
-*(Note: These technologies represent planned architectural choices. Application code has not yet been built in this initialization phase.)*
+- **Database & Persistence**: PostgreSQL, SQLAlchemy, Alembic
+- **Graph Engine & Heuristics**: NetworkX, Pandas, NumPy
+- **Testing**: pytest, HTTPX
 
 ---
 
 ## 4. Current Development Status
 
-**Status: Repository Initialization Phase.**
+**Status: Phase 4 & Phase 5 Active — Interactive Frontend & Detection UI Complete.**
 
-The project structure, development guidelines, ownership boundaries, and empty documentation scaffolds have been created. No frontend or backend application code is active in this phase.
+- Interactive 9-entity / 9-relationship government-grade financial network live.
+- Chronological timeline scrubber with motion sync live.
+- Investigation Insights rail with entity dossiers, risk gauges, and counterfactual freeze live.
+- Automated forensic report generator (HTML + PDF) live.
+- Next steps: Full integration with Bharath's backend detection microservices and PostgreSQL graph persistence.
 
 ---
 
 ## 5. Team Ownership & Responsibilities
 
-The Anvik project is developed by a 6-member team with clear ownership boundaries:
+Anvik follows a strict 6-member team ownership structure:
 
-### Member 1 — Frontend Development and UI/UX
-- React and TypeScript application interface.
-- Dashboard layout, navigation, and reusable UI components.
-- Complaint intake forms and transaction tables.
-- Responsive design, visual consistency, and UI state handling (loading/empty/error).
-- Frontend integration with backend APIs.
-
-### Member 2 — Graph Visualization and Investigation Interface
-- Interactive graph visualization using Cytoscape.js.
-- Graph modeling for accounts, devices, transactions, merchants, and complaints.
-- Node/edge interactions, zooming, panning, selection, and filtering.
-- Highlighting suspicious paths and related evidence trails.
-- Usability, performance, and responsive graph rendering.
-
-### Member 3 — Bharath: Backend, Database and Fraud Detection
-- **Sole owner of the entire backend and detection engine.**
-- PostgreSQL schema, persistence, and Alembic migrations.
-- FastAPI endpoints and Pydantic request/response schemas.
-- Data validation and synthetic dataset import services.
-- Graph construction and analysis using NetworkX.
-- Rule-based detection of suspicious transaction patterns.
-- Evidence-linked alerts and explainable priority scoring.
-- Transaction timelines, complaint associations, and investigation case APIs.
-- Counterfactual analysis engine.
-- Backend unit/integration tests and backend deployment.
-
-### Member 4 — Data Engineering, Testing and QA
-- Synthetic dataset generation (accounts, devices, merchants, transactions, complaints).
-- Planting known suspicious patterns and legitimate lookalike control scenarios.
-- Ground-truth labeling and expected outcome matrices.
-- Verification of API contracts, data integrity, detection accuracy, and false positives.
-- Coordination with Bharath on data schemas and evaluation metrics.
-
-### Member 5 — Integration, Case Management and Deployment Coordination
-- Cross-team repository integration and merge coordination.
-- API contract alignment between frontend and backend.
-- Case-management workflow integration with Member 1.
-- Conflict resolution and end-to-end integration verification.
-- Deployment configuration coordination.
-
-### Member 6 — Demo, Presentation and Deployment Coordination
-- Realistic synthetic demonstration scenarios and walkthrough scripts.
-- Presentation slide deck, architecture diagrams, and visuals.
-- Demonstration rehearsals and final verification.
-- Coordination of deployment checks and submission deliverables.
+| Member | Domain & Ownership | Key Responsibilities |
+| :--- | :--- | :--- |
+| **Member 1** | **Frontend UI/UX** | Application layout, breadcrumbs, complaints panels, filter drawers, responsive UI. |
+| **Member 2** | **Graph Visualization** | Graph topology modeling, SVG/Canvas network rendering, edge bezier calculations, node animations. |
+| **Member 3 (Bharath)** | **Backend & Detection Engine** | **Sole owner of backend.** FastAPI endpoints, PostgreSQL schema, NetworkX graph engine, heuristic scoring, counterfactual analysis. |
+| **Member 4** | **Data Engineering & QA** | Synthetic transaction datasets, ground-truth fraud patterns, benchmark test suites. |
+| **Member 5** | **Integration & Case Management** | End-to-end API integration, case files, complaint persistence, deployment coordination. |
+| **Member 6** | **Demo & Presentation** | Demonstration scenarios, pitch slides, architecture diagrams, final rehearsals. |
 
 ---
 
-## 6. Proposed Development Sequence
+## 6. Quickstart & Installation
 
-1. **Phase 1: Repository Initialization & Ownership (Current)** — Establish git hygiene, documentation scaffold, and project instructions.
-2. **Phase 2: Data Engineering & API Contract Specification** — Define synthetic data formats, ground-truth patterns, and Pydantic/OpenAPI contracts.
-3. **Phase 3: Backend Core & Detection Engine** — Database schema, NetworkX graph engine, and detection rule implementation (Bharath).
-4. **Phase 4: Frontend Core & Graph Interface** — UI shell, tables, forms (Member 1), and Cytoscape.js visualization canvas (Member 2).
-5. **Phase 5: Integration & Case Management** — Connecting frontend to backend APIs and validating end-to-end flows (Member 5 & Team).
-6. **Phase 6: QA, Evaluation & Demonstration Prep** — Benchmark detection accuracy, conduct user walkthrough rehearsals, and deploy (Member 4, 6 & Team).
+### Prerequisites
+- Node.js (v18+)
+- npm / yarn / pnpm
+
+### Running the Frontend
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The application will launch at:
+- **Local:** [http://localhost:3000](http://localhost:3000)
+- **Network:** Available across local LAN
+
+### Building for Production
+```bash
+cd frontend
+npm run build
+```
+Generates a minified, production-ready static bundle in `frontend/dist/`.
+
+---
+
+## 7. License & Compliance
+Developed for the **Code-e-Manipal Hackathon**. All datasets, identifiers, names, phone numbers, and bank account numbers are purely synthetic and generated exclusively for investigative simulation and educational demonstrations.
