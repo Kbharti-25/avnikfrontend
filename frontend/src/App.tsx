@@ -281,16 +281,18 @@ function DashboardContent() {
 
       {/* 2. Main Investigation Workspace */}
       <div className="flex-1 flex min-h-0 relative overflow-hidden bg-[#FBF9F4]">
-        {/* Left Action Rail (Icon-Only buttons with hover text tooltips) */}
-        <Sidebar
-          activeDrawer={activeDrawer}
-          onToggleDrawer={handleToggleDrawer}
-          complaintCount={complaints.length}
-        />
+        {/* Left Action Rail (Icon-Only buttons with hover text tooltips positioned above graph) */}
+        <div className="relative z-50 shrink-0 h-full">
+          <Sidebar
+            activeDrawer={activeDrawer}
+            onToggleDrawer={handleToggleDrawer}
+            complaintCount={complaints.length}
+          />
+        </div>
 
         {/* Stage 2: Complaints & Records case selection screen (Appears directly after Login) */}
         {workspaceStage === 'complaints' && (
-          <div className="flex-1 min-w-0 h-full overflow-hidden">
+          <div className="flex-1 min-w-0 h-full overflow-hidden relative z-0">
             <InvestigationIntakeScreen
               onLoadGraph={handleStartTrace}
               isLoading={isLoadingGraph}
@@ -300,7 +302,7 @@ function DashboardContent() {
 
         {/* Stage 3: Trace connections verification screen (Asks Transaction ID & Device ID) */}
         {workspaceStage === 'trace' && (
-          <div className="flex-1 min-w-0 h-full overflow-hidden">
+          <div className="flex-1 min-w-0 h-full overflow-hidden relative z-0">
             <TraceConnectionsScreen
               complaintId={activeCaseId}
               defaultTransactionId={activeTxnId}
@@ -313,7 +315,7 @@ function DashboardContent() {
 
         {/* Stage 4: Investigation Workspace (Graph is NOT open automatically, only opens on Analysis) */}
         {workspaceStage === 'investigation' && (
-          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden animate-in fade-in duration-200">
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-0 animate-in fade-in duration-200">
             {/* 1. WORKSPACE SUB-HEADER STRIP WITH INTERACTIVE SLIDER BUTTON */}
             <div className="h-10 px-4 bg-white border-b border-[#E8E4D8] flex items-center justify-between text-xs text-slate-700 shrink-0 shadow-2xs select-none gap-3">
               {/* Left: Case Info & Status */}

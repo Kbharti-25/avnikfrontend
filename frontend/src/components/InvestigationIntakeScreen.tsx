@@ -136,18 +136,21 @@ export const InvestigationIntakeScreen: React.FC<InvestigationIntakeScreenProps>
 
             {/* Subtitle */}
             <p className="text-sm text-slate-500">
-              A connected view starts with a complaint.
+              A connected view starts with a complaint or custom investigation workspace.
             </p>
           </div>
 
-          {/* Top-Right Mint Folder Action Button */}
-          <button
-            onClick={() => setShowManualModal(true)}
-            title="Manual Case Entry / Custom Lookup"
-            className="w-10 h-10 rounded-xl bg-[#E8F5F1] hover:bg-[#D7EFE7] active:scale-95 text-[#007065] flex items-center justify-center border border-[#007065]/20 shadow-2xs transition-all cursor-pointer shrink-0"
-          >
-            <Folder className="w-5 h-5 stroke-[2]" />
-          </button>
+          {/* Top-Right Action: + New Workspace Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowManualModal(true)}
+              title="Create New Investigation Workspace"
+              className="px-4 py-2.5 rounded-xl bg-[#007065] hover:bg-[#005a52] active:scale-95 text-white flex items-center gap-2 shadow-xs transition-all cursor-pointer font-bold text-xs shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>New Workspace</span>
+            </button>
+          </div>
         </div>
 
         {/* 2. Tabs Row */}
@@ -349,39 +352,48 @@ export const InvestigationIntakeScreen: React.FC<InvestigationIntakeScreenProps>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               Select any active complaint from the "All complaints" tab and click "Investigate" to launch and save your network graph analysis.
             </p>
-            <button
-              onClick={() => setActiveTab('all')}
-              className="px-4 py-2 rounded-xl bg-[#007065] text-white font-semibold text-xs transition-colors hover:bg-[#005a52] cursor-pointer"
-            >
-              Browse Active Complaints
-            </button>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                onClick={() => setActiveTab('all')}
+                className="px-4 py-2 rounded-xl bg-[#007065] text-white font-semibold text-xs transition-colors hover:bg-[#005a52] cursor-pointer"
+              >
+                Browse Active Complaints
+              </button>
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Workspace</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 5. MANUAL LOOKUP / CUSTOM CASE ENTRY MODAL (Triggered by Mint Folder Button) */}
+      {/* 5. CREATE NEW WORKSPACE MODAL */}
       {showManualModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-[#E2DFD7] shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#E8F5F1] text-[#007065] flex items-center justify-center">
-                  <Folder className="w-4 h-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#E8F5F1] text-[#007065] flex items-center justify-center">
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Custom Case Lookup</h3>
-                  <span className="text-[10px] text-slate-400">Enter custom identifiers</span>
+                  <h3 className="font-bold text-sm text-slate-900">Create New Workspace</h3>
+                  <span className="text-[11px] text-slate-500">Initialize a custom fraud case workspace</span>
                 </div>
               </div>
               <button
                 onClick={() => setShowManualModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm p-1 rounded-md hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-700 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleManualSubmit} className="space-y-3">
+            <form onSubmit={handleManualSubmit} className="space-y-3.5">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Complaint / Case ID
@@ -425,15 +437,16 @@ export const InvestigationIntakeScreen: React.FC<InvestigationIntakeScreenProps>
                 <button
                   type="button"
                   onClick={() => setShowManualModal(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-[#007065] hover:bg-[#005a52] text-white text-xs font-bold shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#007065] hover:bg-[#005a52] text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  Open Case →
+                  <span>Launch Workspace</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </form>
