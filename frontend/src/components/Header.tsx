@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Actions, Search, Avatar */}
       <div className="flex items-center gap-3">
-        {/* New Case / Intake Button */}
+        {/* New Workspace / Intake Button */}
         {isGraphLoaded && onReturnToIntake && (
           <button
             onClick={onReturnToIntake}
@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-all shadow-2xs btn-press"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">New Case</span>
+            <span className="hidden sm:inline">New Workspace</span>
           </button>
         )}
 
