@@ -1,9 +1,12 @@
 export type NodeType = 'account' | 'device' | 'merchant' | 'complaint';
 
+export type NodeRole = 'source_victim' | 'aggregator_mule' | 'secondary_mule' | 'cashout_merchant' | 'device_farm' | 'complaint' | 'verified_control';
+
 export interface GraphNodeData {
   id: string;
   label: string;
   type: NodeType;
+  role?: NodeRole;
   riskScore: number; // 0 - 100
   status: 'active' | 'frozen' | 'flagged' | 'verified';
   subText?: string;
@@ -28,6 +31,46 @@ export interface GraphEdgeData {
   channel: 'UPI_P2P' | 'UPI_P2M' | 'DEVICE_BIND' | 'COMPLAINT_LINK';
   isSuspicious: boolean;
   ruleTriggered?: string;
+}
+
+export type ComplaintStatus = 'under_investigation' | 'resolved' | 'pending_review';
+
+export interface ComplaintRecord {
+  id: string;
+  complaintRef: string;
+  date: string;
+  shortDescription: string;
+  category: string;
+  disputeAmount: number;
+  relatedAccountId: string;
+  relatedAccountUpi: string;
+  relatedBeneficiaryUpi?: string;
+  relatedTxnUtr?: string;
+  riskLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  status: ComplaintStatus;
+  analystNotes?: string;
+}
+
+export type TimelineEventType = 'SUSPICIOUS_PATTERN' | 'FLAGGED_TRANSACTION' | 'ANALYST_REVIEW' | 'CASHOUT';
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  title: string;
+  eventType: TimelineEventType;
+  sender: string;
+  senderName: string;
+  senderUpi: string;
+  receiver: string;
+  receiverName: string;
+  receiverUpi: string;
+  amount: number;
+  utr: string;
+  timeDeltaSeconds?: number;
+  explanation: string;
+  anomalyReason?: string;
+  isFlagged: boolean;
+  edgeId?: string;
 }
 
 export interface SuspiciousAlert {
@@ -65,18 +108,4 @@ export interface CaseFile {
     timestamp: string;
     text: string;
   }[];
-}
-
-export interface TimelineEvent {
-  id: string;
-  timestamp: string;
-  sender: string;
-  senderName: string;
-  receiver: string;
-  receiverName: string;
-  amount: number;
-  utr: string;
-  timeDeltaSeconds?: number;
-  isFlagged: boolean;
-  anomalyReason?: string;
 }
