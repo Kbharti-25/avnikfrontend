@@ -19,6 +19,7 @@ interface HeaderProps {
   onDownloadReport?: () => void;
   onReturnToIntake?: () => void;
   isGraphLoaded?: boolean;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onDownloadReport,
   onReturnToIntake,
   isGraphLoaded = false,
+  onLogout,
 }) => {
   const { theme, toggleTheme } = useTheme();
 
@@ -170,13 +172,14 @@ export const Header: React.FC<HeaderProps> = ({
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Avatar BK */}
-        <div
-          title="Analyst: Bharath K"
-          className="w-8 h-8 rounded-full bg-[#0D6B42] text-white flex items-center justify-center font-bold text-xs ring-1 ring-emerald-500/40 select-none shadow-xs"
+        {/* Avatar BK with Logout Action */}
+        <button
+          onClick={onLogout}
+          title="Analyst: Bharath K (Click to Log Out)"
+          className="w-8 h-8 rounded-full bg-[#0D6B42] hover:bg-[#09472B] active:scale-95 text-white flex items-center justify-center font-bold text-xs ring-1 ring-emerald-500/40 select-none shadow-xs transition-all cursor-pointer"
         >
           BK
-        </div>
+        </button>
       </div>
     </header>
   );

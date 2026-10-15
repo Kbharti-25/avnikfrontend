@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { LoginPage } from './components/LoginPage';
 import { Header } from './components/Header';
 import { Sidebar, LeftNavDrawer } from './components/Sidebar';
 import { NetworkGraphCanvas } from './components/NetworkGraphCanvas';
@@ -35,6 +36,20 @@ import { X } from 'lucide-react';
 
 function DashboardContent() {
   const { theme } = useTheme();
+
+  // Authentication State: Login Page is Stage 1 (The VERY FIRST SCREEN)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [analystGovtId, setAnalystGovtId] = useState<string>('LEA-IND-8812');
+
+  const handleLogin = (govtId: string) => {
+    setAnalystGovtId(govtId);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setIsGraphLoaded(false);
+  };
 
   // Investigation Intake Page State vs Interactive Graph State
   const [isGraphLoaded, setIsGraphLoaded] = useState(false);
@@ -125,7 +140,7 @@ function DashboardContent() {
       edges: reportEdges,
       complaints,
       timeline,
-      analystName: 'Bharath K (Member 3)',
+      analystName: `Officer ${analystGovtId} (Bharath K - Member 3)`,
     });
   };
 
@@ -223,6 +238,11 @@ function DashboardContent() {
     setSearchQuery('');
   };
 
+  // 1. Stage 1: The very first page shown before anything else is the ANVIK Login Page
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
     <div
       className={`h-screen w-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden ${
@@ -238,6 +258,7 @@ function DashboardContent() {
         onOpenAlerts={() => handleToggleDrawer('summary')}
         alertCount={3}
         onDownloadReport={handleDownloadReport}
+        onLogout={handleLogout}
       />
 
       {/* 2. Main Investigation Workspace */}
