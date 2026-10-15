@@ -54,22 +54,28 @@ export const Header: React.FC<HeaderProps> = ({
           <span 
             onClick={onReturnToIntake}
             className="text-slate-400 font-medium hover:text-[#007065] cursor-pointer transition-colors"
-            title="Return to Investigation Inputs"
+            title="Return to Complaints & records"
           >
             Workspace
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <span 
             onClick={onReturnToIntake}
-            className="text-slate-400 font-medium hover:text-[#007065] cursor-pointer transition-colors"
-            title="Return to Investigation Inputs"
+            className={`font-medium transition-colors cursor-pointer ${
+              isGraphLoaded ? 'text-slate-400 hover:text-[#007065]' : 'font-semibold text-slate-900'
+            }`}
+            title="Return to Complaints & records"
           >
-            {isGraphLoaded ? 'Investigations' : 'Intake'}
+            Complaints & records
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="font-mono font-semibold text-xs text-slate-900">
-            {currentInvestigationId}
-          </span>
+          {isGraphLoaded && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <span className="font-mono font-semibold text-xs text-slate-900">
+                {currentInvestigationId}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

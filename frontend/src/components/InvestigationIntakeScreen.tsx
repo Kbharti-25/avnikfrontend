@@ -1,5 +1,74 @@
-import React, { useState } from 'react';
-import { Search, Sparkles, Network, ArrowRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { 
+  Search, 
+  Folder, 
+  RotateCw, 
+  FileText, 
+  ArrowRight, 
+  SlidersHorizontal, 
+  Plus,
+  CheckCircle2,
+  Clock,
+  AlertCircle
+} from 'lucide-react';
+
+export interface ComplaintItem {
+  id: string; // e.g. NCRP-2026-0841
+  dateReceived: string; // e.g. 15 Oct 2026
+  transactionReference: string; // e.g. UPI260915084127
+  deviceId: string; // e.g. DEV-208101
+  status: 'Open' | 'In review' | 'Resolved';
+  riskScore: string; // e.g. "—", "88", "94"
+  amount: number;
+}
+
+const DEFAULT_COMPLAINTS: ComplaintItem[] = [
+  {
+    id: 'NCRP-2026-0841',
+    dateReceived: '15 Oct 2026',
+    transactionReference: 'UPI260915084127',
+    deviceId: 'DEV-208101',
+    status: 'Open',
+    riskScore: '—',
+    amount: 24500,
+  },
+  {
+    id: 'NCRP-2026-0839',
+    dateReceived: '15 Oct 2026',
+    transactionReference: 'UPI260915083902',
+    deviceId: 'ANDR_09F2',
+    status: 'In review',
+    riskScore: '—',
+    amount: 16000,
+  },
+  {
+    id: 'NCRP-2026-0836',
+    dateReceived: '14 Oct 2026',
+    transactionReference: 'UPI260914092611',
+    deviceId: 'DEV-7F3A9C',
+    status: 'Open',
+    riskScore: '—',
+    amount: 7800,
+  },
+  {
+    id: 'NCRP-2026-0824',
+    dateReceived: '13 Oct 2026',
+    transactionReference: 'UPI260913140288',
+    deviceId: 'DEV-33019A',
+    status: 'In review',
+    riskScore: '88',
+    amount: 52000,
+  },
+  {
+    id: 'NCRP-2026-0812',
+    dateReceived: '12 Oct 2026',
+    transactionReference: 'UPI260912110543',
+    deviceId: 'DEV-889021',
+    status: 'Open',
+    riskScore: '94',
+    amount: 31000,
+  },
+];
 
 interface InvestigationIntakeScreenProps {
   onLoadGraph: (transactionId: string, deviceId: string, caseId: string) => void;
@@ -10,173 +79,350 @@ export const InvestigationIntakeScreen: React.FC<InvestigationIntakeScreenProps>
   onLoadGraph,
   isLoading = false,
 }) => {
-  const [transactionId, setTransactionId] = useState('TXN-UPI-9001');
-  const [deviceId, setDeviceId] = useState('ANDR_09F2');
-  const [caseId, setCaseId] = useState('CMP-2026-0001');
+  const [activeTab, setActiveTab] = useState<'all' | 'saved'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Open' | 'In review' | 'Resolved'>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
 
-  const handleLoad = () => {
-    onLoadGraph(transactionId, deviceId, caseId);
+  // Manual Custom Case inputs
+  const [manualTxn, setManualTxn] = useState('UPI260915084127');
+  const [manualDev, setManualDev] = useState('ANDR_09F2');
+  const [manualCase, setManualCase] = useState('NCRP-2026-0841');
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 400);
   };
 
-  const handleSelectPreset = (txn: string, dev: string, cId: string) => {
-    setTransactionId(txn);
-    setDeviceId(dev);
-    setCaseId(cId);
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowManualModal(false);
+    onLoadGraph(manualTxn || 'UPI260915084127', manualDev || 'ANDR_09F2', manualCase || 'NCRP-2026-0841');
   };
+
+  const filteredComplaints = useMemo(() => {
+    return DEFAULT_COMPLAINTS.filter((c) => {
+      const matchesSearch =
+        c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.transactionReference.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchQuery, statusFilter]);
 
   return (
-    <div className="w-full h-full bg-[#FBF9F4] text-slate-800 flex flex-col overflow-y-auto select-none p-6 md:p-8">
-      {/* 1. Header Section */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-1">
-            NETWORK ANALYSIS
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-serif italic text-slate-900 tracking-tight font-normal">
-            Investigation Workspace
-          </h1>
-        </div>
-
-        {/* Top-Right Case Badge */}
-        <div className="px-3.5 py-1 rounded-full border border-slate-300/80 bg-white/70 shadow-2xs text-xs font-mono text-slate-600">
-          Case #{caseId}
-        </div>
-      </div>
-
-      {/* 2. Investigation Inputs Card */}
-      <div className="rounded-2xl border border-[#E8E4D8] bg-[#FAF8F3] p-5 shadow-xs mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            INVESTIGATION INPUTS
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">
-            Case #{caseId}
-          </span>
-        </div>
-
-        {/* Inputs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* Transaction ID */}
+    <div className="w-full h-full bg-[#FBF9F4] text-slate-800 flex flex-col overflow-y-auto select-none p-6 sm:p-10">
+      <div className="max-w-5xl w-full mx-auto space-y-6">
+        {/* 1. Header Section */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
-              TRANSACTION ID
-            </label>
-            <input
-              type="text"
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value)}
-              placeholder="e.g. TXN-UPI-9001"
-              className="w-full bg-white border border-[#DDD8CA] rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0B5C4D] focus:ring-1 focus:ring-[#0B5C4D] transition-all shadow-2xs"
-            />
-          </div>
-
-          {/* Device ID */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
-              DEVICE ID
-            </label>
-            <input
-              type="text"
-              value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value)}
-              placeholder="e.g. ANDR_09F2"
-              className="w-full bg-white border border-[#DDD8CA] rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0B5C4D] focus:ring-1 focus:ring-[#0B5C4D] transition-all shadow-2xs"
-            />
-          </div>
-        </div>
-
-        {/* Bottom Row: Load Button & Presets */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#EBE7DC]">
-          <button
-            onClick={handleLoad}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-5 py-2 rounded-full bg-[#0B5C4D] hover:bg-[#07473B] active:scale-98 text-white font-semibold text-xs transition-all shadow-xs cursor-pointer"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>{isLoading ? 'Loading investigation graph...' : 'Load investigation graph'}</span>
-          </button>
-
-          {/* Quick Demo Case Presets */}
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <span>Demo presets:</span>
-            <button
-              onClick={() => handleSelectPreset('TXN-UPI-9001', 'ANDR_09F2', 'CMP-2026-0001')}
-              className={`px-2 py-0.5 rounded-md font-mono text-[10px] border transition-colors ${
-                caseId === 'CMP-2026-0001'
-                  ? 'bg-[#0B5C4D]/10 border-[#0B5C4D] text-[#0B5C4D] font-bold'
-                  : 'bg-white border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              Case #CMP-2026-0001
-            </button>
-            <button
-              onClick={() => handleSelectPreset('TXN-UPI-8812', 'DEV-7F3A9C', 'INV-2026-084')}
-              className={`px-2 py-0.5 rounded-md font-mono text-[10px] border transition-colors ${
-                caseId === 'INV-2026-084'
-                  ? 'bg-[#0B5C4D]/10 border-[#0B5C4D] text-[#0B5C4D] font-bold'
-                  : 'bg-white border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              Case #INV-2026-084
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Main Workspace Grid: Canvas Area (Left) + Analysis Rail (Right) */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-[440px]">
-        {/* Left: Empty Canvas with Vertical Guidelines */}
-        <div
-          className="flex-1 rounded-2xl border border-[#E8E4D8] bg-[#FAF8F3] relative flex items-center justify-center p-8 overflow-hidden shadow-xs"
-          style={{
-            backgroundImage: `repeating-linear-gradient(to right, transparent, transparent 79px, rgba(226, 223, 215, 0.45) 79px, rgba(226, 223, 215, 0.45) 80px)`,
-          }}
-        >
-          {/* Centered Awaiting Inputs Card */}
-          <div className="rounded-2xl border border-dashed border-[#D2CCBE] bg-white/80 p-8 max-w-md w-full text-center shadow-xs backdrop-blur-2xs">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 mx-auto mb-3 shadow-2xs">
-              <Network className="w-5 h-5 stroke-[1.8]" />
+            {/* Eyebrow */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-0.5 bg-[#007065]" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-[#007065]">
+                INVESTIGATION WORKSPACE
+              </span>
             </div>
 
-            <h3 className="font-serif italic text-base sm:text-lg text-slate-900 font-normal mb-1.5">
-              Awaiting investigation inputs
-            </h3>
+            {/* Title */}
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 mb-1.5 font-sans">
+              Complaints & records
+            </h1>
 
-            <p className="text-xs text-slate-500 leading-relaxed mb-4">
-              Submit a Transaction ID and Device ID to render the money-flow graph.
+            {/* Subtitle */}
+            <p className="text-sm text-slate-500">
+              A connected view starts with a complaint.
             </p>
+          </div>
 
+          {/* Top-Right Mint Folder Action Button */}
+          <button
+            onClick={() => setShowManualModal(true)}
+            title="Manual Case Entry / Custom Lookup"
+            className="w-10 h-10 rounded-xl bg-[#E8F5F1] hover:bg-[#D7EFE7] active:scale-95 text-[#007065] flex items-center justify-center border border-[#007065]/20 shadow-2xs transition-all cursor-pointer shrink-0"
+          >
+            <Folder className="w-5 h-5 stroke-[2]" />
+          </button>
+        </div>
+
+        {/* 2. Tabs Row */}
+        <div className="flex items-center justify-between border-b border-[#E8E4D8] pt-2">
+          <div className="flex items-center gap-6">
+            {/* Tab: All complaints */}
             <button
-              onClick={handleLoad}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold bg-[#0B5C4D]/10 hover:bg-[#0B5C4D]/15 text-[#0B5C4D] transition-colors cursor-pointer"
+              onClick={() => setActiveTab('all')}
+              className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative cursor-pointer ${
+                activeTab === 'all'
+                  ? 'text-[#007065]'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
             >
-              <span>Click to render network</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>All complaints</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  activeTab === 'all'
+                    ? 'bg-[#E8F5F1] text-[#007065]'
+                    : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                5
+              </span>
+              {activeTab === 'all' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007065] rounded-full" />
+              )}
+            </button>
+
+            {/* Tab: Saved investigations */}
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative cursor-pointer ${
+                activeTab === 'saved'
+                  ? 'text-[#007065]'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <span>Saved investigations</span>
+              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-400">
+                0
+              </span>
+              {activeTab === 'saved' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007065] rounded-full" />
+              )}
             </button>
           </div>
+
+          {/* Refresh Action Button */}
+          <button
+            onClick={handleRefresh}
+            title="Refresh Complaints Feed"
+            className={`p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ${
+              isRefreshing ? 'animate-spin text-[#007065]' : ''
+            }`}
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Right Rail: Analyse Action & Advisory Card */}
-        <div className="w-full lg:w-[280px] shrink-0 flex flex-col gap-4">
-          {/* Analyse Investigation Button */}
-          <button
-            onClick={handleLoad}
-            disabled={isLoading}
-            className="w-full py-3 px-4 rounded-xl bg-[#599E94] hover:bg-[#4A8B82] active:scale-98 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 fill-white/20" />
-            <span>{isLoading ? 'Analyzing...' : 'Analyse investigation'}</span>
-          </button>
+        {/* 3. Search & Filter Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-sm min-w-[220px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search complaint or transaction"
+                className="w-full pl-9.5 pr-4 py-2 bg-white border border-[#E2DFD7] rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#007065] focus:ring-1 focus:ring-[#007065] transition-all shadow-2xs"
+              />
+            </div>
 
-          {/* Decision Support Advisory Card */}
-          <div className="rounded-xl border border-[#E8E4D8] bg-[#FAF8F3] p-4 text-center">
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Run the analysis to see the risk score, suspicious patterns and supporting evidence.
-              Results are decision support, never proof of fraud.
+            {/* Status Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="px-3.5 py-2 bg-white border border-[#E2DFD7] rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#007065] shadow-2xs cursor-pointer"
+            >
+              <option value="all">All statuses</option>
+              <option value="Open">Open</option>
+              <option value="In review">In review</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+
+          {/* Record Count */}
+          <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+            {filteredComplaints.length} records
+          </span>
+        </div>
+
+        {/* 4. Table / Feed Card */}
+        {activeTab === 'all' ? (
+          <div className="border border-[#E2DFD7] rounded-2xl bg-white overflow-hidden shadow-2xs">
+            {/* Table Header Strip */}
+            <div className="grid grid-cols-12 px-6 py-3 bg-[#EEF2F6] text-[11px] font-bold uppercase tracking-wider text-slate-600 border-b border-[#E2DFD7]">
+              <div className="col-span-3">COMPLAINT ID</div>
+              <div className="col-span-2">DATE RECEIVED</div>
+              <div className="col-span-3">TRANSACTION REFERENCE</div>
+              <div className="col-span-2">STATUS</div>
+              <div className="col-span-1">RISK SCORE</div>
+              <div className="col-span-1 text-right">ACTION</div>
+            </div>
+
+            {/* Table Body */}
+            <div className="divide-y divide-[#EAE7DC]">
+              {filteredComplaints.map((c) => (
+                <div
+                  key={c.id}
+                  className="grid grid-cols-12 px-6 py-4 items-center text-xs hover:bg-[#FAF9F5] transition-colors"
+                >
+                  {/* Complaint ID with File Icon */}
+                  <div className="col-span-3 flex items-center gap-2.5 font-bold text-slate-900">
+                    <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="tracking-tight">{c.id}</span>
+                  </div>
+
+                  {/* Date Received */}
+                  <div className="col-span-2 text-slate-600 font-medium">
+                    {c.dateReceived}
+                  </div>
+
+                  {/* Transaction Reference */}
+                  <div className="col-span-3 font-mono text-slate-700 font-medium">
+                    {c.transactionReference}
+                  </div>
+
+                  {/* Status Pill */}
+                  <div className="col-span-2">
+                    {c.status === 'Open' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                        <span>Open</span>
+                      </span>
+                    ) : c.status === 'In review' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-amber-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <span>In review</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        <span>Resolved</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Risk Score */}
+                  <div className="col-span-1 font-mono font-semibold text-slate-600">
+                    {c.riskScore}
+                  </div>
+
+                  {/* Action Link: Investigate -> */}
+                  <div className="col-span-1 text-right">
+                    <button
+                      onClick={() => onLoadGraph(c.transactionReference, c.deviceId, c.id)}
+                      disabled={isLoading}
+                      className="inline-flex items-center gap-1 font-bold text-xs text-[#007065] hover:text-[#005a52] active:scale-95 group transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <span>Investigate</span>
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {filteredComplaints.length === 0 && (
+                <div className="p-10 text-center text-slate-400 text-xs">
+                  No complaints match your search or filter criteria.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Saved Investigations Empty State */
+          <div className="border border-[#E2DFD7] rounded-2xl bg-white p-12 text-center shadow-2xs space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+              <FileText className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800">No saved investigations yet</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Select any active complaint from the "All complaints" tab and click "Investigate" to launch and save your network graph analysis.
             </p>
+            <button
+              onClick={() => setActiveTab('all')}
+              className="px-4 py-2 rounded-xl bg-[#007065] text-white font-semibold text-xs transition-colors hover:bg-[#005a52] cursor-pointer"
+            >
+              Browse Active Complaints
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 5. MANUAL LOOKUP / CUSTOM CASE ENTRY MODAL (Triggered by Mint Folder Button) */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-[#E2DFD7] shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#E8F5F1] text-[#007065] flex items-center justify-center">
+                  <Folder className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Custom Case Lookup</h3>
+                  <span className="text-[10px] text-slate-400">Enter custom identifiers</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="text-slate-400 hover:text-slate-700 text-sm p-1 rounded-md hover:bg-slate-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleManualSubmit} className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Complaint / Case ID
+                </label>
+                <input
+                  type="text"
+                  value={manualCase}
+                  onChange={(e) => setManualCase(e.target.value)}
+                  placeholder="e.g. NCRP-2026-0841"
+                  className="w-full bg-[#FAF9F5] border border-[#DDD8CA] rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#007065]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Transaction Reference (UTR / UPI)
+                </label>
+                <input
+                  type="text"
+                  value={manualTxn}
+                  onChange={(e) => setManualTxn(e.target.value)}
+                  placeholder="e.g. UPI260915084127"
+                  className="w-full bg-[#FAF9F5] border border-[#DDD8CA] rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#007065]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Device Identifier
+                </label>
+                <input
+                  type="text"
+                  value={manualDev}
+                  onChange={(e) => setManualDev(e.target.value)}
+                  placeholder="e.g. ANDR_09F2"
+                  className="w-full bg-[#FAF9F5] border border-[#DDD8CA] rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#007065]"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(false)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-lg bg-[#007065] hover:bg-[#005a52] text-white text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  Open Case →
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
