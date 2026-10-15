@@ -5,6 +5,7 @@ import { Sidebar, LeftNavDrawer } from './components/Sidebar';
 import { NetworkGraphCanvas } from './components/NetworkGraphCanvas';
 import { TransactionTimelineBar } from './components/TransactionTimelineBar';
 import { InvestigationInsightsRail } from './components/InvestigationInsightsRail';
+import { InvestigationIntakeScreen } from './components/InvestigationIntakeScreen';
 import { ComplaintsPanel } from './components/ComplaintsPanel';
 import { FraudTimelinePanel } from './components/FraudTimelinePanel';
 import { InvestigationSummaryPanel } from './components/InvestigationSummaryPanel';
@@ -34,6 +35,13 @@ import { X } from 'lucide-react';
 
 function DashboardContent() {
   const { theme } = useTheme();
+
+  // Investigation Intake Page State vs Interactive Graph State
+  const [isGraphLoaded, setIsGraphLoaded] = useState(false);
+  const [activeCaseId, setActiveCaseId] = useState('CMP-2026-0001');
+  const [activeTxnId, setActiveTxnId] = useState('TXN-UPI-9001');
+  const [activeDevId, setActiveDevId] = useState('ANDR_09F2');
+  const [isLoadingGraph, setIsLoadingGraph] = useState(false);
 
   // Active Right Drawer ('complaints' | 'timeline' | 'summary' | null)
   const [activeDrawer, setActiveDrawer] = useState<LeftNavDrawer>(null);
@@ -111,7 +119,7 @@ function DashboardContent() {
     }));
 
     downloadInvestigationReport({
-      caseId: 'INV-2026-084',
+      caseId: activeCaseId,
       graphImageBase64: null,
       nodes: reportNodes,
       edges: reportEdges,
@@ -119,6 +127,24 @@ function DashboardContent() {
       timeline,
       analystName: 'Bharath K (Member 3)',
     });
+  };
+
+  // Load Graph from Intake Screen Handler
+  const handleLoadGraphFromIntake = (txnId: string, devId: string, cId: string) => {
+    setIsLoadingGraph(true);
+    setActiveTxnId(txnId);
+    setActiveDevId(devId);
+    setActiveCaseId(cId);
+
+    setTimeout(() => {
+      setIsLoadingGraph(false);
+      setIsGraphLoaded(true);
+    }, 350);
+  };
+
+  // Return to Intake Screen Handler
+  const handleReturnToIntake = () => {
+    setIsGraphLoaded(false);
   };
 
   // Toggle Left Nav Drawers
@@ -205,7 +231,9 @@ function DashboardContent() {
     >
       {/* 1. Top Header Bar (Brand Logo, Breadcrumbs, Demo Workspace, Controls) */}
       <Header
-        currentInvestigationId="INV-2026-084"
+        currentInvestigationId={activeCaseId}
+        isGraphLoaded={isGraphLoaded}
+        onReturnToIntake={handleReturnToIntake}
         onOpenSearch={() => setIsFilterSlidebarOpen(true)}
         onOpenAlerts={() => handleToggleDrawer('summary')}
         alertCount={3}
@@ -221,50 +249,60 @@ function DashboardContent() {
           complaintCount={complaints.length}
         />
 
-        {/* Investigation Workspace Layout: 75%–85% Graph & Timeline on Left, 20%–25% Investigation Insights Rail on Right */}
-        <div className="flex-1 flex min-w-0 h-full overflow-hidden">
-          {/* Left Area (78% width): Network Graph (upper) + Transaction Timeline (flush beneath) */}
-          <section className="flex-1 min-w-0 h-full flex flex-col p-3 pr-1.5 overflow-hidden">
-            {/* Upper: Interactive Network Graph Canvas */}
-            <div className="flex-1 min-h-0 relative rounded-t-2xl overflow-hidden border border-[#E8E4D8] border-b-0 shadow-2xs">
-              <NetworkGraphCanvas
-                nodes={networkNodes}
-                edges={networkEdges}
-                selectedNodeId={selectedNetworkNode?.id || null}
-                onSelectNode={setSelectedNetworkNode}
-                timelineIndex={timelineIndex}
-                frozenNodeIds={frozenNodeIds}
-              />
-            </div>
+        {/* Condition: Show Investigation Intake / Landing Screen OR Interactive Graph Workspace */}
+        {!isGraphLoaded ? (
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
+            <InvestigationIntakeScreen
+              onLoadGraph={handleLoadGraphFromIntake}
+              isLoading={isLoadingGraph}
+            />
+          </div>
+        ) : (
+          /* Investigation Workspace Layout: 75%–85% Graph & Timeline on Left, 20%–25% Investigation Insights Rail on Right */
+          <div className="flex-1 flex min-w-0 h-full overflow-hidden animate-in fade-in duration-200">
+            {/* Left Area (78% width): Network Graph (upper) + Transaction Timeline (flush beneath) */}
+            <section className="flex-1 min-w-0 h-full flex flex-col p-3 pr-1.5 overflow-hidden">
+              {/* Upper: Interactive Network Graph Canvas */}
+              <div className="flex-1 min-h-0 relative rounded-t-2xl overflow-hidden border border-[#E8E4D8] border-b-0 shadow-2xs">
+                <NetworkGraphCanvas
+                  nodes={networkNodes}
+                  edges={networkEdges}
+                  selectedNodeId={selectedNetworkNode?.id || null}
+                  onSelectNode={setSelectedNetworkNode}
+                  timelineIndex={timelineIndex}
+                  frozenNodeIds={frozenNodeIds}
+                />
+              </div>
 
-            {/* Lower: Transaction Timeline Bar (Positioned flush beneath the graph canvas in a dedicated card) */}
-            <div className="shrink-0 rounded-b-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
-              <TransactionTimelineBar
-                timelineIndex={timelineIndex}
-                setTimelineIndex={setTimelineIndex}
-                isPlaying={isPlaying}
-                setIsPlaying={setIsPlaying}
-              />
-            </div>
-          </section>
+              {/* Lower: Transaction Timeline Bar (Positioned flush beneath the graph canvas in a dedicated card) */}
+              <div className="shrink-0 rounded-b-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
+                <TransactionTimelineBar
+                  timelineIndex={timelineIndex}
+                  setTimelineIndex={setTimelineIndex}
+                  isPlaying={isPlaying}
+                  setIsPlaying={setIsPlaying}
+                />
+              </div>
+            </section>
 
-          {/* Right Rail (22% width, min 300px, max 380px): INVESTIGATION INSIGHTS */}
-          <div className="w-[340px] shrink-0 h-full p-3 pl-1.5 overflow-hidden">
-            <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
-              <InvestigationInsightsRail
-                selectedNode={selectedNetworkNode}
-                onClearSelection={() => setSelectedNetworkNode(null)}
-                edges={networkEdges}
-                nodes={networkNodes}
-                frozenNodeIds={frozenNodeIds}
-                onToggleFreeze={handleToggleFreeze}
-                onDownloadReport={handleDownloadReport}
-                onOpenComplaints={() => handleToggleDrawer('complaints')}
-                complaintCount={complaints.length}
-              />
+            {/* Right Rail (22% width, min 300px, max 380px): INVESTIGATION INSIGHTS */}
+            <div className="w-[340px] shrink-0 h-full p-3 pl-1.5 overflow-hidden">
+              <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
+                <InvestigationInsightsRail
+                  selectedNode={selectedNetworkNode}
+                  onClearSelection={() => setSelectedNetworkNode(null)}
+                  edges={networkEdges}
+                  nodes={networkNodes}
+                  frozenNodeIds={frozenNodeIds}
+                  onToggleFreeze={handleToggleFreeze}
+                  onDownloadReport={handleDownloadReport}
+                  onOpenComplaints={() => handleToggleDrawer('complaints')}
+                  complaintCount={complaints.length}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Slide-In Modal Drawer when Complaints or Past Record are clicked from Sidebar */}
         {activeDrawer && (

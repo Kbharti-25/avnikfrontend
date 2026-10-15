@@ -6,7 +6,8 @@ import {
   Sun, 
   Moon, 
   Network,
-  Download
+  Download,
+  Plus
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -16,6 +17,8 @@ interface HeaderProps {
   onOpenAlerts: () => void;
   alertCount?: number;
   onDownloadReport?: () => void;
+  onReturnToIntake?: () => void;
+  isGraphLoaded?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAlerts,
   alertCount = 3,
   onDownloadReport,
+  onReturnToIntake,
+  isGraphLoaded = false,
 }) => {
   const { theme, toggleTheme } = useTheme();
 
@@ -59,12 +64,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Breadcrumbs */}
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400 font-medium hover:text-slate-200 cursor-pointer transition-colors">
+          <span 
+            onClick={onReturnToIntake}
+            className="text-slate-400 font-medium hover:text-[#007065] cursor-pointer transition-colors"
+            title="Return to Investigation Inputs"
+          >
             Workspace
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-slate-400 font-medium hover:text-slate-200 cursor-pointer transition-colors">
-            Investigations
+          <span 
+            onClick={onReturnToIntake}
+            className="text-slate-400 font-medium hover:text-[#007065] cursor-pointer transition-colors"
+            title="Return to Investigation Inputs"
+          >
+            {isGraphLoaded ? 'Investigations' : 'Intake'}
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
           <span
@@ -79,6 +92,18 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Demo Workspace Pill, Search, Alerts, Theme toggle, Avatar */}
       <div className="flex items-center gap-3">
+        {/* New Case / Intake Button */}
+        {isGraphLoaded && onReturnToIntake && (
+          <button
+            onClick={onReturnToIntake}
+            title="Enter new Transaction ID & Device ID"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-2xs btn-press"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">New Case</span>
+          </button>
+        )}
+
         {/* Demo Workspace Pill */}
         <div
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
