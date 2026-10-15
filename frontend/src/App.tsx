@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { LoginPage } from './components/LoginPage';
 import { Header } from './components/Header';
@@ -32,7 +32,7 @@ import {
   ComplaintStatus, 
   TimelineEvent 
 } from './types';
-import { X } from 'lucide-react';
+import { X, Network, SlidersHorizontal, ArrowLeftRight } from 'lucide-react';
 
 function DashboardContent() {
   // Authentication State: Login Page is Stage 1 (The VERY FIRST SCREEN)
@@ -55,6 +55,54 @@ function DashboardContent() {
   const [activeTxnId, setActiveTxnId] = useState('TXN-UPI-9001');
   const [activeDevId, setActiveDevId] = useState('ANDR_09F2');
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
+
+  // Interactive Graph Visibility & Slide Bar Width Splitter State
+  const [isGraphVisible, setIsGraphVisible] = useState<boolean>(true);
+  const [graphWidthPercent, setGraphWidthPercent] = useState<number>(68); // 30% to 85%
+  const [textOnLeft, setTextOnLeft] = useState<boolean>(true); // default true: text adjusts on left side, graph expands on right
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+
+  const handleMouseDownResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Resize listener for the draggable vertical slide bar splitter
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const sidebarWidth = 64; // width of Left Action Rail
+      const totalWidth = window.innerWidth - sidebarWidth;
+      const mouseX = Math.max(10, e.clientX - sidebarWidth);
+      const ratio = mouseX / totalWidth;
+
+      // When text is on the left, graph is on the right: graphWidth = (1 - ratio) * 100
+      // When graph is on the left, text is on the right: graphWidth = ratio * 100
+      const newGraphPercent = textOnLeft
+        ? Math.min(Math.max(Math.round((1 - ratio) * 100), 30), 85)
+        : Math.min(Math.max(Math.round(ratio * 100), 30), 85);
+
+      setGraphWidthPercent(newGraphPercent);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, textOnLeft]);
+
+  const handleShowOrExpandGraph = () => {
+    setIsGraphVisible(true);
+    setGraphWidthPercent((prev) => (prev < 65 ? 72 : prev));
+  };
 
   // Active Right Drawer ('complaints' | 'timeline' | 'summary' | null)
   const [activeDrawer, setActiveDrawer] = useState<LeftNavDrawer>(null);
@@ -273,48 +321,244 @@ function DashboardContent() {
             />
           </div>
         ) : (
-          /* Investigation Workspace Layout: 75%–85% Graph & Timeline on Left, 20%–25% Investigation Insights Rail on Right */
-          <div className="flex-1 flex min-w-0 h-full overflow-hidden animate-in fade-in duration-200">
-            {/* Left Area (78% width): Network Graph (upper) + Transaction Timeline (flush beneath) */}
-            <section className="flex-1 min-w-0 h-full flex flex-col p-3 pr-1.5 overflow-hidden">
-              {/* Upper: Interactive Network Graph Canvas */}
-              <div className="flex-1 min-h-0 relative rounded-t-2xl overflow-hidden border border-[#E8E4D8] border-b-0 shadow-2xs">
-                <NetworkGraphCanvas
-                  nodes={networkNodes}
-                  edges={networkEdges}
-                  selectedNodeId={selectedNetworkNode?.id || null}
-                  onSelectNode={setSelectedNetworkNode}
-                  timelineIndex={timelineIndex}
-                  frozenNodeIds={frozenNodeIds}
-                />
+          /* Interactive Investigation Workspace: Slide Bar Controls + Evenly Adjusting Left Text + Uniformly Expanding Graph */
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden animate-in fade-in duration-200">
+            {/* 1. SLIDE BAR WORKSPACE CONTROL STRIP */}
+            <div className="h-9 px-4 bg-white border-b border-[#E8E4D8] flex items-center justify-between text-xs text-slate-700 shrink-0 shadow-2xs select-none gap-2">
+              {/* Left: Slide Bar Range Slider & Percent Labels */}
+              <div className="flex items-center gap-3 min-w-0 overflow-x-auto py-0.5">
+                <div className="flex items-center gap-1.5 shrink-0 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#007065]" />
+                  <span className="hidden sm:inline">Workspace Slide Bar:</span>
+                </div>
+
+                {/* Range Slider for adjusting split */}
+                <div className="flex items-center gap-2 shrink-0 bg-[#FBF9F4] px-2.5 py-1 rounded-lg border border-[#E8E4D8]">
+                  <span className="text-[11px] font-semibold text-slate-700 whitespace-nowrap">
+                    {textOnLeft ? 'Text' : 'Graph'}: {textOnLeft ? 100 - graphWidthPercent : graphWidthPercent}%
+                  </span>
+                  <input
+                    type="range"
+                    min={30}
+                    max={85}
+                    step={1}
+                    value={graphWidthPercent}
+                    onChange={(e) => setGraphWidthPercent(Number(e.target.value))}
+                    className="w-28 sm:w-36 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#007065]"
+                    title="Slide to adjust left text and expand graph uniformly"
+                  />
+                  <span className="text-[11px] font-bold text-[#007065] whitespace-nowrap">
+                    {textOnLeft ? 'Graph' : 'Text'}: {textOnLeft ? graphWidthPercent : 100 - graphWidthPercent}%
+                  </span>
+                </div>
+
+                {/* Quick Split Presets */}
+                <div className="hidden md:flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setGraphWidthPercent(50)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
+                      graphWidthPercent === 50
+                        ? 'bg-[#007065] text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    50/50 Split
+                  </button>
+                  <button
+                    onClick={() => setGraphWidthPercent(68)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
+                      graphWidthPercent === 68
+                        ? 'bg-[#007065] text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    70% Standard
+                  </button>
+                  <button
+                    onClick={() => setGraphWidthPercent(85)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
+                      graphWidthPercent === 85
+                        ? 'bg-[#007065] text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    85% Expanded
+                  </button>
+                </div>
               </div>
 
-              {/* Lower: Transaction Timeline Bar (Positioned flush beneath the graph canvas in a dedicated card) */}
-              <div className="shrink-0 rounded-b-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
-                <TransactionTimelineBar
-                  timelineIndex={timelineIndex}
-                  setTimelineIndex={setTimelineIndex}
-                  isPlaying={isPlaying}
-                  setIsPlaying={setIsPlaying}
-                />
-              </div>
-            </section>
+              {/* Right: Swap Sides & Graph Toggle Buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setTextOnLeft((prev) => !prev)}
+                  title="Swap Left/Right Panels"
+                  className="px-2 py-1 rounded-lg border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-[11px] font-medium text-slate-700 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <ArrowLeftRight className="w-3 h-3 text-slate-500" />
+                  <span className="hidden sm:inline">Swap Sides</span>
+                </button>
 
-            {/* Right Rail (22% width, min 300px, max 380px): INVESTIGATION INSIGHTS */}
-            <div className="w-[340px] shrink-0 h-full p-3 pl-1.5 overflow-hidden">
-              <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
-                <InvestigationInsightsRail
-                  selectedNode={selectedNetworkNode}
-                  onClearSelection={() => setSelectedNetworkNode(null)}
-                  edges={networkEdges}
-                  nodes={networkNodes}
-                  frozenNodeIds={frozenNodeIds}
-                  onToggleFreeze={handleToggleFreeze}
-                  onDownloadReport={handleDownloadReport}
-                  onOpenComplaints={() => handleToggleDrawer('complaints')}
-                  complaintCount={complaints.length}
-                />
+                <button
+                  onClick={() => setIsGraphVisible((prev) => !prev)}
+                  title={isGraphVisible ? 'Hide Network Graph' : 'Show Network Graph'}
+                  className="px-2.5 py-1 rounded-lg bg-[#007065] hover:bg-[#005a52] text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Network className="w-3.5 h-3.5" />
+                  <span>{isGraphVisible ? 'Hide Graph' : 'Show Graph'}</span>
+                </button>
               </div>
+            </div>
+
+            {/* 2. MAIN RESIZABLE WORKSPACE BODY */}
+            <div className="flex-1 flex min-h-0 relative overflow-hidden bg-[#FBF9F4]">
+              {/* Scenario A: Graph is Hidden -> Text Insights occupies full width */}
+              {!isGraphVisible ? (
+                <div className="w-full h-full p-4 overflow-hidden animate-in fade-in duration-200">
+                  <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs bg-white">
+                    <InvestigationInsightsRail
+                      selectedNode={selectedNetworkNode}
+                      onClearSelection={() => setSelectedNetworkNode(null)}
+                      edges={networkEdges}
+                      nodes={networkNodes}
+                      frozenNodeIds={frozenNodeIds}
+                      onToggleFreeze={handleToggleFreeze}
+                      onDownloadReport={handleDownloadReport}
+                      onOpenComplaints={() => handleToggleDrawer('complaints')}
+                      complaintCount={complaints.length}
+                      onShowGraph={handleShowOrExpandGraph}
+                      isGraphVisible={isGraphVisible}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Scenario B: Both Left Text & Uniformly Expanding Graph Visible */
+                <div className="w-full h-full flex min-h-0 overflow-hidden">
+                  {/* Left Panel (Text / Insights when textOnLeft is true) */}
+                  {textOnLeft ? (
+                    <>
+                      {/* Left Side: Investigation Insights (Text adjusts evenly) */}
+                      <div
+                        style={{ width: `calc(${100 - graphWidthPercent}% - 5px)` }}
+                        className="h-full min-w-[280px] p-2.5 pr-0 overflow-hidden transition-[width] duration-75"
+                      >
+                        <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs bg-white">
+                          <InvestigationInsightsRail
+                            selectedNode={selectedNetworkNode}
+                            onClearSelection={() => setSelectedNetworkNode(null)}
+                            edges={networkEdges}
+                            nodes={networkNodes}
+                            frozenNodeIds={frozenNodeIds}
+                            onToggleFreeze={handleToggleFreeze}
+                            onDownloadReport={handleDownloadReport}
+                            onOpenComplaints={() => handleToggleDrawer('complaints')}
+                            complaintCount={complaints.length}
+                            onShowGraph={handleShowOrExpandGraph}
+                            isGraphVisible={isGraphVisible}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Interactive Draggable Slide Bar Splitter Handle */}
+                      <div
+                        onMouseDown={handleMouseDownResize}
+                        className={`w-2.5 h-full flex items-center justify-center cursor-col-resize select-none shrink-0 transition-colors group ${
+                          isResizing ? 'bg-[#007065]/20' : 'hover:bg-[#007065]/10'
+                        }`}
+                        title="Click and drag to adjust split between Left Text and Graph"
+                      >
+                        <div className="w-1 h-8 rounded-full bg-slate-300 group-hover:bg-[#007065] group-active:bg-[#007065] transition-colors" />
+                      </div>
+
+                      {/* Right Side: Interactive Network Graph & Timeline (Expands & Distributes Uniformly) */}
+                      <section
+                        style={{ width: `calc(${graphWidthPercent}% - 5px)` }}
+                        className="h-full min-w-[320px] flex-1 flex flex-col p-2.5 pl-0 overflow-hidden transition-[width] duration-75"
+                      >
+                        {/* Upper: Interactive Network Graph Canvas */}
+                        <div className="flex-1 min-h-0 relative rounded-t-2xl overflow-hidden border border-[#E8E4D8] border-b-0 shadow-2xs">
+                          <NetworkGraphCanvas
+                            nodes={networkNodes}
+                            edges={networkEdges}
+                            selectedNodeId={selectedNetworkNode?.id || null}
+                            onSelectNode={setSelectedNetworkNode}
+                            timelineIndex={timelineIndex}
+                            frozenNodeIds={frozenNodeIds}
+                          />
+                        </div>
+
+                        {/* Lower: Transaction Timeline Bar (Positioned flush beneath graph) */}
+                        <div className="shrink-0 rounded-b-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
+                          <TransactionTimelineBar
+                            timelineIndex={timelineIndex}
+                            setTimelineIndex={setTimelineIndex}
+                            isPlaying={isPlaying}
+                            setIsPlaying={setIsPlaying}
+                          />
+                        </div>
+                      </section>
+                    </>
+                  ) : (
+                    /* Inverted Layout: Graph on Left, Text on Right */
+                    <>
+                      <section
+                        style={{ width: `calc(${graphWidthPercent}% - 5px)` }}
+                        className="h-full min-w-[320px] flex-1 flex flex-col p-2.5 pr-0 overflow-hidden transition-[width] duration-75"
+                      >
+                        <div className="flex-1 min-h-0 relative rounded-t-2xl overflow-hidden border border-[#E8E4D8] border-b-0 shadow-2xs">
+                          <NetworkGraphCanvas
+                            nodes={networkNodes}
+                            edges={networkEdges}
+                            selectedNodeId={selectedNetworkNode?.id || null}
+                            onSelectNode={setSelectedNetworkNode}
+                            timelineIndex={timelineIndex}
+                            frozenNodeIds={frozenNodeIds}
+                          />
+                        </div>
+                        <div className="shrink-0 rounded-b-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
+                          <TransactionTimelineBar
+                            timelineIndex={timelineIndex}
+                            setTimelineIndex={setTimelineIndex}
+                            isPlaying={isPlaying}
+                            setIsPlaying={setIsPlaying}
+                          />
+                        </div>
+                      </section>
+
+                      {/* Interactive Draggable Slide Bar Splitter Handle */}
+                      <div
+                        onMouseDown={handleMouseDownResize}
+                        className={`w-2.5 h-full flex items-center justify-center cursor-col-resize select-none shrink-0 transition-colors group ${
+                          isResizing ? 'bg-[#007065]/20' : 'hover:bg-[#007065]/10'
+                        }`}
+                        title="Click and drag to adjust split"
+                      >
+                        <div className="w-1 h-8 rounded-full bg-slate-300 group-hover:bg-[#007065] group-active:bg-[#007065] transition-colors" />
+                      </div>
+
+                      <div
+                        style={{ width: `calc(${100 - graphWidthPercent}% - 5px)` }}
+                        className="h-full min-w-[280px] p-2.5 pl-0 overflow-hidden transition-[width] duration-75"
+                      >
+                        <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs bg-white">
+                          <InvestigationInsightsRail
+                            selectedNode={selectedNetworkNode}
+                            onClearSelection={() => setSelectedNetworkNode(null)}
+                            edges={networkEdges}
+                            nodes={networkNodes}
+                            frozenNodeIds={frozenNodeIds}
+                            onToggleFreeze={handleToggleFreeze}
+                            onDownloadReport={handleDownloadReport}
+                            onOpenComplaints={() => handleToggleDrawer('complaints')}
+                            complaintCount={complaints.length}
+                            onShowGraph={handleShowOrExpandGraph}
+                            isGraphVisible={isGraphVisible}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

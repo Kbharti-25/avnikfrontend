@@ -12,7 +12,9 @@ import {
   Radio, 
   Layers, 
   CheckCircle2,
-  Users
+  Users,
+  Network,
+  Maximize2
 } from 'lucide-react';
 import { NetworkNode, NetworkEdge } from '../mock/network9Data';
 
@@ -26,6 +28,8 @@ interface InvestigationInsightsRailProps {
   onDownloadReport: () => void;
   onOpenComplaints: () => void;
   complaintCount?: number;
+  onShowGraph?: () => void;
+  isGraphVisible?: boolean;
 }
 
 export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps> = ({
@@ -38,6 +42,8 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
   onDownloadReport,
   onOpenComplaints,
   complaintCount = 4,
+  onShowGraph,
+  isGraphVisible = true,
 }) => {
   // Connected edges for the selected node
   const connectedEdges = selectedNode
@@ -45,23 +51,71 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
     : [];
 
   return (
-    <aside className="w-full h-full bg-[#FFFFFF] border-l border-[#E8E4D8] flex flex-col justify-between overflow-hidden select-none">
+    <aside className="w-full h-full bg-[#FFFFFF] border-r md:border-r-0 border-[#E8E4D8] flex flex-col justify-between overflow-hidden select-none">
       {/* 1. Rail Header */}
-      <div className="px-5 py-4 border-b border-[#E8E4D8] flex items-center justify-between bg-white shrink-0">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800 block">
+      <div className="px-5 py-3.5 border-b border-[#E8E4D8] flex items-center justify-between bg-white shrink-0 gap-2">
+        <div className="min-w-0">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800 block truncate">
             INVESTIGATION INSIGHTS
           </span>
           <span className="text-[10px] text-slate-400 font-mono">Case #INV-2026-084</span>
         </div>
 
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
-          Critical · 94/100
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Interactive Button to Reveal / Expand the Graph */}
+          {onShowGraph && (
+            <button
+              onClick={onShowGraph}
+              title={isGraphVisible ? "Expand & Focus Graph" : "Make Graph Appear"}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#007065] hover:bg-[#005a52] active:scale-95 text-white flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">{isGraphVisible ? 'View Graph' : 'Show Graph'}</span>
+            </button>
+          )}
+
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
+            Critical · 94/100
+          </span>
+        </div>
       </div>
 
-      {/* 2. Scrollable Body Content */}
+      {/* 2. Scrollable Body Content (Text reflows and adjusts evenly across widths) */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        {/* Interactive Launch Graph Banner Card */}
+        {onShowGraph && (
+          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#007065] text-white flex items-center justify-center shadow-xs">
+                  <Network className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-slate-900 leading-tight">
+                    Transaction Network Graph
+                  </h4>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    9 entities · 9 relationships
+                  </span>
+                </div>
+              </div>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed text-balance">
+              Explore the 1st-degree mule accounts, shared hardware token, and collect request flows on an interactive canvas.
+            </p>
+
+            <button
+              onClick={onShowGraph}
+              className="w-full py-2 px-3 rounded-lg bg-[#007065] hover:bg-[#005a52] active:scale-[0.98] text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+            >
+              <span>{isGraphVisible ? 'Focus & Expand Network Graph' : 'Make Graph Appear'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {selectedNode ? (
           /* ================= SELECTED NODE DOSSIER ================= */
           <div className="space-y-4 animate-in fade-in duration-150">
@@ -99,141 +153,135 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
                 <span className="text-[10px] text-[#007065] font-bold">VERIFIED</span>
               </div>
 
-              {/* Node Details Grid */}
-              <div className="space-y-1.5 text-[11px] text-slate-600">
+              {/* Node Details Grid (Adjusts evenly based on available width) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
                 {selectedNode.bank && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Institution:</span>
-                    <span className="font-medium text-slate-800">{selectedNode.bank}</span>
+                  <div className="p-2 rounded-lg bg-white border border-slate-200">
+                    <span className="text-slate-400 block text-[10px]">Institution</span>
+                    <span className="font-semibold text-slate-800">{selectedNode.bank}</span>
                   </div>
                 )}
                 {selectedNode.hardwareModel && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Device Spec:</span>
-                    <span className="font-medium text-slate-800">{selectedNode.hardwareModel}</span>
+                  <div className="p-2 rounded-lg bg-white border border-slate-200">
+                    <span className="text-slate-400 block text-[10px]">Hardware Fingerprint</span>
+                    <span className="font-semibold text-slate-800 font-mono text-[10px]">{selectedNode.hardwareModel}</span>
                   </div>
                 )}
                 {selectedNode.disputeAmount && (
-                  <div className="flex justify-between text-rose-700 font-bold">
-                    <span>Disputed Volume:</span>
-                    <span>₹{selectedNode.disputeAmount.toLocaleString('en-IN')}</span>
+                  <div className="p-2 rounded-lg bg-white border border-slate-200">
+                    <span className="text-slate-400 block text-[10px]">Associated Flow</span>
+                    <span className="font-bold text-rose-700 font-mono">₹{selectedNode.disputeAmount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Activity Timestamp:</span>
-                  <span className="font-mono text-slate-800">{selectedNode.timestamp} IST</span>
+                <div className="p-2 rounded-lg bg-white border border-slate-200">
+                  <span className="text-slate-400 block text-[10px]">Risk Assessment</span>
+                  <span className="font-bold text-slate-900">{selectedNode.riskScore}/100</span>
                 </div>
               </div>
             </div>
 
-            {/* Risk Assessment Meter */}
-            <div className="p-3.5 rounded-xl border border-[#E2DFD7] bg-white">
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 mb-2">
-                <span>Anomaly Risk Assessment</span>
-                <span className="font-mono text-rose-600 font-extrabold">{selectedNode.riskScore}/100</span>
+            {/* Counterfactual Freeze Simulator Button */}
+            <div className="p-3.5 rounded-xl border border-[#E2DFD7] bg-[#FAFAFA] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-[11px]">Counterfactual Simulation</span>
+                <span className="text-[10px] text-slate-400">What-If Analysis</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    selectedNode.riskScore > 75
-                      ? 'bg-rose-500'
-                      : selectedNode.riskScore > 40
-                      ? 'bg-amber-500'
-                      : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${selectedNode.riskScore}%` }}
-                />
-              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed text-balance">
+                Simulate early intervention by freezing this node to trace impact on downstream dispersion paths.
+              </p>
+              <button
+                onClick={() => onToggleFreeze(selectedNode.id)}
+                className={`w-full py-2 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                  frozenNodeIds.has(selectedNode.id)
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                    : 'bg-[#007065] text-white hover:bg-[#005a52]'
+                }`}
+              >
+                {frozenNodeIds.has(selectedNode.id) ? (
+                  <>
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>Unfreeze Account (Active Simulation)</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Simulate Account Freeze</span>
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* 1st-Degree Incident Connections */}
+            {/* Connected Transactions List */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                <span>Direct Linkages ({connectedEdges.length})</span>
-                <span className="text-[10px] text-[#007065] font-mono">1st-Degree</span>
-              </div>
-
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {connectedEdges.map((edge) => {
-                  const isOut = edge.source === selectedNode.id;
-                  const otherNodeId = isOut ? edge.target : edge.source;
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800 block">
+                Direct Links ({connectedEdges.length})
+              </span>
+              <div className="space-y-1.5">
+                {connectedEdges.map((e) => {
+                  const otherNodeId = e.source === selectedNode.id ? e.target : e.source;
                   const otherNode = nodes.find((n) => n.id === otherNodeId);
+                  const isOutflow = e.source === selectedNode.id;
 
                   return (
                     <div
-                      key={edge.id}
-                      className="p-2.5 rounded-lg border border-[#E2DFD7] bg-[#FAFAFA] text-[11px]"
+                      key={e.id}
+                      className="p-2.5 rounded-lg border border-[#E2DFD7] bg-white flex items-center justify-between hover:border-slate-300 transition-colors"
                     >
-                      <div className="flex items-center justify-between font-mono font-semibold mb-1">
-                        <span className="text-slate-800 truncate max-w-[140px]">
-                          {otherNode?.name || otherNodeId}
-                        </span>
-                        <span className="text-[#007065] text-xs">
-                          {edge.amountFormatted || 'Bound'}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            e.type === 'device_link' ? 'bg-slate-400' : isOutflow ? 'bg-rose-500' : 'bg-emerald-500'
+                          }`}
+                        />
+                        <div>
+                          <span className="font-semibold text-slate-800 text-xs block">
+                            {otherNode?.name || otherNodeId}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {otherNode?.handle}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-500">
-                        <span>{isOut ? 'Outgoing ──►' : '◄── Incoming'}</span>
-                        <span className="truncate max-w-[130px]">{edge.ruleTriggered}</span>
+
+                      <div className="text-right">
+                        {e.amountFormatted ? (
+                          <span className="font-bold font-mono text-xs text-slate-900 block">
+                            {e.amountFormatted}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-medium">Device Bind</span>
+                        )}
+                        <span className="text-[9px] text-slate-400">{e.timestamp}</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            {/* Counterfactual Action Button */}
-            <div className="pt-2">
-              <button
-                onClick={() => onToggleFreeze(selectedNode.id)}
-                className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer ${
-                  frozenNodeIds.has(selectedNode.id)
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                    : 'bg-rose-600 hover:bg-rose-500 text-white'
-                }`}
-              >
-                {frozenNodeIds.has(selectedNode.id) ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span>Unfreeze Entity in Simulation</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Simulate Immediate Freeze</span>
-                  </>
-                )}
-              </button>
-              <p className="text-[10px] text-slate-400 text-center mt-1">
-                {frozenNodeIds.has(selectedNode.id)
-                  ? 'Entity flow severed in counterfactual model'
-                  : 'Test disruption impact by severing transactions'}
-              </p>
-            </div>
           </div>
         ) : (
-          /* ================= NETWORK OVERVIEW (DEFAULT) ================= */
+          /* ================= DEFAULT OVERVIEW DOSSIER ================= */
           <div className="space-y-4">
-            {/* Executive Metric Cards Strip */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Quick Metrics Grid (Adjusts evenly based on left panel width) */}
+            <div className="grid grid-cols-2 gap-2.5">
               <div className="p-3 rounded-xl border border-[#E2DFD7] bg-[#FAFAFA]">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                  Disputed Volume
+                  Total Disputed Flow
                 </span>
                 <span className="font-mono font-extrabold text-base text-rose-700 block">
-                  ₹48,300
+                  ₹24,500
                 </span>
-                <span className="text-[10px] text-[#007065] font-medium">Aggregated Claim</span>
+                <span className="text-[10px] text-slate-500 font-medium">100% Layered</span>
               </div>
 
               <div className="p-3 rounded-xl border border-[#E2DFD7] bg-[#FAFAFA]">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                  Structuring Speed
+                  Speed of Extraction
                 </span>
-                <span className="font-mono font-extrabold text-base text-[#007065] block">
-                  &lt; 3 mins
+                <span className="font-mono font-extrabold text-base text-slate-900 block">
+                  3m 15s
                 </span>
-                <span className="text-[10px] text-slate-500 font-medium">4 Hop Fan-out</span>
+                <span className="text-[10px] text-slate-500 font-medium">4 Rapid Hops</span>
               </div>
 
               <div className="p-3 rounded-xl border border-[#E2DFD7] bg-[#FAFAFA]">
@@ -257,7 +305,7 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
               </div>
             </div>
 
-            {/* High-Priority Explainable Detection Signals */}
+            {/* High-Priority Explainable Detection Signals (Adjusts evenly across widths) */}
             <div className="space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800 block">
                 Explainable Detection Signals (3)
@@ -273,7 +321,7 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
                     HIGH
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-[11px] text-slate-600 leading-relaxed text-balance">
                   Aggregator <strong>ravi-18@ybl</strong> split ₹23,800 across 2 secondary mules within 41 seconds of receipt.
                 </p>
               </div>
@@ -288,7 +336,7 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
                     MED
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-[11px] text-slate-600 leading-relaxed text-balance">
                   Physical device <strong>DEV-7F3A9C</strong> bound and authorized across 3 distinct mule bank accounts.
                 </p>
               </div>
@@ -303,7 +351,7 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
                     CRIT
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-[11px] text-slate-600 leading-relaxed text-balance">
                   Collect request <strong>COL-008412</strong> drained origin account without standard 2FA approval pause.
                 </p>
               </div>
@@ -317,7 +365,7 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
         {/* Download Forensic Report */}
         <button
           onClick={onDownloadReport}
-          className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-[#007065] hover:bg-[#059669] text-white flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+          className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-[#007065] hover:bg-[#059669] text-white flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Download Forensic Report</span>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   GitBranch, 
   ZoomIn, 
@@ -43,6 +43,70 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic canvas dimensions via ResizeObserver
+  const [dimensions, setDimensions] = useState({ width: 950, height: 520 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { clientWidth, clientHeight } = containerRef.current;
+        if (clientWidth > 0 && clientHeight > 0) {
+          setDimensions({ width: clientWidth, height: clientHeight });
+        }
+      }
+    };
+    updateSize();
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDimensions({ width, height });
+        }
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Compute uniformly distributed node coordinates based on real-time canvas width & height
+  const distributedNodes = useMemo(() => {
+    const w = dimensions.width || 950;
+    const h = dimensions.height || 520;
+
+    // Relative topological anchors across 5 distinct topological columns:
+    const BASE_LAYOUT: Record<string, { nx: number; ny: number }> = {
+      acc_origin:    { nx: 0.11, ny: 0.44 },
+      dev_origin:    { nx: 0.11, ny: 0.78 },
+      col_req:       { nx: 0.31, ny: 0.28 },
+      acc_receiving: { nx: 0.50, ny: 0.45 },
+      dev_shared:    { nx: 0.50, ny: 0.16 },
+      acc_mule_1:    { nx: 0.74, ny: 0.20 },
+      acc_mule_2:    { nx: 0.74, ny: 0.48 },
+      acc_mule_3:    { nx: 0.74, ny: 0.76 },
+      acc_linked:    { nx: 0.91, ny: 0.48 },
+    };
+
+    const padX = Math.max(60, w * 0.08);
+    const padY = Math.max(70, h * 0.14);
+    const usableW = Math.max(300, w - 2 * padX);
+    const usableH = Math.max(260, h - 2 * padY);
+
+    return nodes.map((node) => {
+      const pos = BASE_LAYOUT[node.id];
+      if (pos) {
+        return {
+          ...node,
+          x: Math.round(padX + pos.nx * usableW),
+          y: Math.round(padY + pos.ny * usableH),
+        };
+      }
+      return node;
+    });
+  }, [nodes, dimensions]);
 
   // Compute 1st-degree connected neighbors when a node is selected
   const activeNeighborIds = useMemo(() => {
@@ -156,7 +220,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
         {/* Right: Entity counter badge */}
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E2DFD7] shadow-2xs text-[11px] font-medium text-slate-700">
           <span className="w-1.5 h-1.5 rounded-full bg-[#007065] animate-pulse" />
-          <span>• 9 entities · 9 relationships</span>
+          <span>• 9 entities · 9 relationships · Uniformly Distributed</span>
         </div>
       </div>
 
@@ -244,8 +308,8 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
           {/* ================= EDGES LAYER ================= */}
           <g className="edges-layer">
             {edges.map((edge) => {
-              const srcNode = nodes.find((n) => n.id === edge.source);
-              const tgtNode = nodes.find((n) => n.id === edge.target);
+              const srcNode = distributedNodes.find((n) => n.id === edge.source);
+              const tgtNode = distributedNodes.find((n) => n.id === edge.target);
               if (!srcNode || !tgtNode) return null;
 
               const isVisibleInTimeline = edge.timelineIndex <= timelineIndex;
@@ -334,9 +398,9 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
             })}
           </g>
 
-          {/* ================= NODES LAYER ================= */}
+          {/* ================= NODES LAYER (UNIFORMLY DISTRIBUTED) ================= */}
           <g className="nodes-layer">
-            {nodes.map((node) => {
+            {distributedNodes.map((node) => {
               const isVisibleInTimeline = isNodeActiveInTimeline(node);
               const isSelected = selectedNodeId === node.id;
               const isDimmed = activeNeighborIds !== null && !activeNeighborIds.has(node.id);
