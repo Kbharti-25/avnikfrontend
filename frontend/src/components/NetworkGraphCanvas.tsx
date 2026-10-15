@@ -77,17 +77,26 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
     const w = dimensions.width || 950;
     const h = dimensions.height || 520;
 
-    // Relative topological anchors across 5 distinct topological columns:
+    // Relative topological anchors across 5 distinct topological columns with symmetric vertical alignment:
     const BASE_LAYOUT: Record<string, { nx: number; ny: number }> = {
-      acc_origin:    { nx: 0.11, ny: 0.44 },
-      dev_origin:    { nx: 0.11, ny: 0.78 },
-      col_req:       { nx: 0.31, ny: 0.28 },
-      acc_receiving: { nx: 0.50, ny: 0.45 },
-      dev_shared:    { nx: 0.50, ny: 0.16 },
-      acc_mule_1:    { nx: 0.74, ny: 0.20 },
-      acc_mule_2:    { nx: 0.74, ny: 0.48 },
-      acc_mule_3:    { nx: 0.74, ny: 0.76 },
-      acc_linked:    { nx: 0.91, ny: 0.48 },
+      // Column 1: Origin account & Origin device (vertically aligned)
+      acc_origin:    { nx: 0.10, ny: 0.50 },
+      dev_origin:    { nx: 0.10, ny: 0.82 },
+
+      // Column 2: Collect request (upper conduit)
+      col_req:       { nx: 0.28, ny: 0.26 },
+
+      // Column 3: Central Aggregator receiving spine & shared device (directly above)
+      acc_receiving: { nx: 0.48, ny: 0.50 },
+      dev_shared:    { nx: 0.48, ny: 0.18 },
+
+      // Column 4: Symmetrical 3-Mule fan-out (upper +0.28, middle 0.50, lower -0.28)
+      acc_mule_1:    { nx: 0.70, ny: 0.22 },
+      acc_mule_2:    { nx: 0.70, ny: 0.50 },
+      acc_mule_3:    { nx: 0.70, ny: 0.78 },
+
+      // Column 5: Linked terminal account (aligned on central axis)
+      acc_linked:    { nx: 0.90, ny: 0.50 },
     };
 
     const padX = Math.max(60, w * 0.08);
@@ -461,33 +470,37 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                         strokeWidth="2"
                         filter="drop-shadow(0 4px 10px rgba(0, 112, 101, 0.12))"
                       />
-                      <g transform="translate(-8, -8)" className="text-[#007065]">
-                        <User className="w-4 h-4 stroke-[2.2]" />
-                      </g>
+                      <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
+                        <div className="w-full h-full flex items-center justify-center text-[#007065]">
+                          <User className="w-5 h-5 stroke-[2.2]" />
+                        </div>
+                      </foreignObject>
                     </g>
                   )}
 
-                  {/* 2. DEVICE NODE: Rounded rectangle (42px × 52px, rx: 10px) */}
+                  {/* 2. DEVICE NODE: Symmetrical rounded badge (48px × 48px, rx: 12px) */}
                   {node.type === 'device' && (
                     <g className="transition-transform duration-150 group-hover:scale-108">
                       <rect
-                        x="-21"
-                        y="-26"
-                        width="42"
-                        height="52"
-                        rx="10"
+                        x="-24"
+                        y="-24"
+                        width="48"
+                        height="48"
+                        rx="12"
                         fill="#F8FAFC"
                         stroke="#94A3B8"
                         strokeWidth="1.5"
                         filter="drop-shadow(0 4px 8px rgba(0,0,0,0.06))"
                       />
-                      <g transform="translate(-7, -10)" className="text-slate-600">
-                        <Smartphone className="w-3.5 h-5 stroke-[2]" />
-                      </g>
+                      <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
+                        <div className="w-full h-full flex items-center justify-center text-slate-600">
+                          <Smartphone className="w-5 h-5 stroke-[2]" />
+                        </div>
+                      </foreignObject>
                     </g>
                   )}
 
-                  {/* 3. COLLECT REQUEST NODE: Rounded square (48px × 48px, rx: 12px) in amber */}
+                  {/* 3. COLLECT REQUEST NODE: Symmetrical rounded square (48px × 48px, rx: 12px) in amber */}
                   {node.type === 'collect' && (
                     <g className="transition-transform duration-150 group-hover:scale-108">
                       <rect
@@ -501,27 +514,31 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                         strokeWidth="1.5"
                         filter="drop-shadow(0 4px 10px rgba(217, 119, 6, 0.15))"
                       />
-                      <g transform="translate(-8, -8)" className="text-amber-700">
-                        <ArrowUpDown className="w-4 h-4 stroke-[2.2]" />
-                      </g>
+                      <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
+                        <div className="w-full h-full flex items-center justify-center text-amber-700">
+                          <ArrowUpDown className="w-5 h-5 stroke-[2.2]" />
+                        </div>
+                      </foreignObject>
                     </g>
                   )}
 
-                  {/* 4. POTENTIAL MULE ACCOUNT NODE: Circular badge (50px diameter) with soft rose tint & coral ring */}
+                  {/* 4. POTENTIAL MULE ACCOUNT NODE: Circular badge (48px diameter) with soft rose tint & coral ring */}
                   {node.type === 'mule' && (
                     <g className="transition-transform duration-150 group-hover:scale-108">
                       <circle
                         cx="0"
                         cy="0"
-                        r="25"
+                        r="24"
                         fill="#FFF1F2"
                         stroke="#E11D48"
                         strokeWidth="2"
                         filter="drop-shadow(0 4px 12px rgba(225, 29, 72, 0.16))"
                       />
-                      <g transform="translate(-8, -8)" className="text-rose-600">
-                        <CreditCard className="w-4 h-4 stroke-[2.2]" />
-                      </g>
+                      <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
+                        <div className="w-full h-full flex items-center justify-center text-rose-600">
+                          <CreditCard className="w-5 h-5 stroke-[2.2]" />
+                        </div>
+                      </foreignObject>
                     </g>
                   )}
 
@@ -624,7 +641,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
 
           {/* [▢ Device] */}
           <div className="flex items-center gap-2">
-            <span className="w-3.5 h-4 rounded-xs border-1.5 border-slate-400 bg-[#F8FAFC] inline-block" />
+            <span className="w-3.5 h-3.5 rounded-sm border-1.5 border-slate-400 bg-[#F8FAFC] inline-block" />
             <span>Device</span>
           </div>
 

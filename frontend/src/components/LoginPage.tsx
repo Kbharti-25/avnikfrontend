@@ -15,7 +15,7 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [govtId, setGovtId] = useState('LEA-IND-8812');
-  const [password, setPassword] = useState('••••••••••••');
+  const [password, setPassword] = useState('Cybercrime@2026');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -134,14 +134,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-[#DDD8CA] bg-white text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#007065] focus:ring-1 focus:ring-[#007065] transition-all shadow-2xs"
+                  className="w-full pl-10 pr-20 py-3 rounded-xl border border-[#DDD8CA] bg-white text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#007065] focus:ring-1 focus:ring-[#007065] transition-all shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center gap-1.5 text-slate-500 hover:text-[#007065] text-xs font-semibold select-none transition-colors cursor-pointer"
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-4 h-4 text-slate-500" />
+                      <span>Hide</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4 text-slate-500" />
+                      <span>Show</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
