@@ -4,17 +4,11 @@ import {
   ZoomIn, 
   ZoomOut, 
   Maximize2, 
-  RotateCw, 
-  SlidersHorizontal, 
   Search, 
   Type, 
   AlertTriangle,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Layers,
-  ShieldAlert,
-  ArrowRight
+  SlidersHorizontal,
+  RotateCw
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { GraphNodeData, GraphEdgeData } from '../types';
@@ -76,10 +70,9 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   const cyRef = useRef<Core | null>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('ALL');
   const [showLabels, setShowLabels] = useState(true);
-  const [showLegend, setShowLegend] = useState(false);
   const [hoverData, setHoverData] = useState<HoverTooltipData | null>(null);
 
-  // Filter nodes based on sliders, search, and type
+  // Filter visible nodes
   const visibleNodes = useMemo(() => {
     return nodes.filter((n) => {
       if (!filterTypes[n.type]) return false;
@@ -107,44 +100,44 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     });
   }, [edges, minAmount, visibleNodeIds]);
 
-  // Color & styling helper based on Role & Status
-  const getNodeColor = (node: GraphNodeData, isFrozen: boolean, isDark: boolean): string => {
-    if (isFrozen) return isDark ? '#1E293B' : '#E2E8F0';
-    if (node.role === 'source_victim') return '#0284C7'; // Sky/Cyan Blue
-    if (node.role === 'aggregator_mule') return '#E11D48'; // Rose / Crimson
-    if (node.role === 'secondary_mule') return '#EA580C'; // Coral / Orange
-    if (node.role === 'cashout_merchant') return '#7C3AED'; // Violet / Purple
-    if (node.role === 'device_farm') return '#D97706'; // Amber
-    if (node.role === 'complaint' || node.type === 'complaint') return '#DC2626'; // Red
-    if (node.role === 'verified_control') return isDark ? '#059669' : '#10B981'; // Emerald
-
-    if (node.type === 'device') return '#D97706';
-    if (node.type === 'merchant') return '#7C3AED';
-    if (node.riskScore > 85) return '#E11D48';
-    if (node.riskScore > 50) return '#EA580C';
-    return isDark ? '#059669' : '#10B981';
+  // Color & styling helper matching the exact screenshot palette
+  const getNodeColor = (node: GraphNodeData, isFrozen: boolean): string => {
+    if (isFrozen) return '#1E293B';
+    if (node.id === 'ACC_VICTIM_1') return '#14B8A6'; // Teal circle (anand.verma@axis)
+    if (node.id === 'ACC_LEGIT_1') return '#10B981'; // Green circle (priya.nair@okhdfc)
+    if (node.type === 'merchant') return '#9333EA'; // Purple hexagon
+    if (node.type === 'device') return '#F97316'; // Orange diamond
+    if (node.type === 'complaint') return '#E11D48'; // Pink-Red octagon (NCRP-2026-8812)
+    // Fraud mules (rohit.sharma, karan.singh, deepak.gupta, amit.patel)
+    if (node.riskScore > 50 || node.role?.includes('mule')) return '#E11D48'; // Pink-Red
+    return '#10B981';
   };
 
-  const getNodeBorderColor = (node: GraphNodeData, isFrozen: boolean, isDark: boolean): string => {
-    if (isFrozen) return isDark ? '#475569' : '#94A3B8';
-    if (node.role === 'source_victim') return '#38BDF8';
-    if (node.role === 'aggregator_mule') return '#FDA4AF';
-    if (node.role === 'secondary_mule') return '#FDBA74';
-    if (node.role === 'cashout_merchant') return '#C4B5FD';
-    if (node.role === 'device_farm') return '#FCD34D';
-    if (node.role === 'complaint' || node.type === 'complaint') return '#FCA5A5';
-    if (node.role === 'verified_control') return '#6EE7B7';
-    return node.riskScore > 75 ? '#FDA4AF' : (isDark ? '#34D399' : '#059669');
+  const getNodeBorderColor = (node: GraphNodeData, isFrozen: boolean): string => {
+    if (isFrozen) return '#64748B';
+    if (node.id === 'ACC_VICTIM_1') return '#2DD4BF';
+    if (node.id === 'ACC_LEGIT_1') return '#34D399';
+    if (node.type === 'merchant') return '#C084FC';
+    if (node.type === 'device') return '#FDBA74';
+    if (node.type === 'complaint') return '#FDA4AF';
+    if (node.riskScore > 50 || node.role?.includes('mule')) return '#FDA4AF';
+    return '#34D399';
   };
 
   const getNodeSize = (node: GraphNodeData): number => {
-    if (node.role === 'aggregator_mule') return 44;
-    if (node.role === 'cashout_merchant') return 42;
-    if (node.role === 'secondary_mule') return 38;
-    if (node.role === 'source_victim') return 40;
-    if (node.type === 'device') return 40;
-    if (node.type === 'complaint') return 40;
-    return 36;
+    if (node.id === 'ACC_PRIMARY_MULE') return 46;
+    if (node.type === 'merchant') return 44;
+    if (node.type === 'device') return 42;
+    if (node.type === 'complaint') return 42;
+    return 38;
+  };
+
+  const getEdgeLabel = (e: GraphEdgeData): string => {
+    if (e.channel === 'DEVICE_BIND') return 'BasedOn';
+    if (e.channel === 'COMPLAINT_LINK') return 'Dispute';
+    if (e.source === 'ACC_VICTIM_1' && e.target === 'ACC_PRIMARY_MULE') return 'Transaction';
+    if (e.amount > 0) return `Linked`;
+    return 'Linked';
   };
 
   // Cytoscape initialization
@@ -153,10 +146,31 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
 
     const isDark = theme === 'dark';
 
+    // Preset cluster coordinates to guarantee the exact two-cluster split from screenshot
+    const getInitialPosition = (id: string) => {
+      const positions: Record<string, { x: number; y: number }> = {
+        // Left Cluster: Mule Ring & Device Collusion
+        'ACC_VICTIM_1': { x: 440, y: 390 },
+        'COMPLAINT_NCRP_8812': { x: 550, y: 290 },
+        'ACC_PRIMARY_MULE': { x: 310, y: 300 },
+        'ACC_MULE_2': { x: 300, y: 440 },
+        'ACC_MULE_3': { x: 280, y: 120 },
+        'ACC_MULE_4': { x: 210, y: 200 },
+        'DEV_FARM_1': { x: 190, y: 350 },
+        'MERCH_CASHOUT': { x: 380, y: 210 },
+        // Right Cluster: Legitimate Baseline Control
+        'ACC_LEGIT_1': { x: 740, y: 150 },
+        'DEV_USER_LEGIT': { x: 670, y: 270 },
+        'MERCH_GROCERY': { x: 810, y: 290 },
+      };
+      return positions[id] || undefined;
+    };
+
     const cyElements = [
       ...visibleNodes.map((n) => {
         const isFrozen = frozenNodeIds.has(n.id);
         const size = getNodeSize(n);
+        const pos = getInitialPosition(n.id);
         return {
           data: {
             id: n.id,
@@ -172,15 +186,18 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             deviceId: n.deviceId,
             deviceModel: n.deviceModel,
             disputeAmount: n.disputeAmount,
-            color: getNodeColor(n, isFrozen, isDark),
-            borderColor: getNodeBorderColor(n, isFrozen, isDark),
+            color: getNodeColor(n, isFrozen),
+            borderColor: getNodeBorderColor(n, isFrozen),
             nodeSize: size,
           },
+          position: pos ? { x: pos.x, y: pos.y } : undefined,
         };
       }),
       ...visibleEdges.map((e) => {
         const isMuleEdge = e.isSuspicious;
         const isSevered = frozenNodeIds.has(e.source) || frozenNodeIds.has(e.target);
+        const isDevice = e.channel === 'DEVICE_BIND';
+        const isLegit = !e.isSuspicious;
         return {
           data: {
             id: e.id,
@@ -190,20 +207,18 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             channel: e.channel,
             utr: e.utr,
             ruleTriggered: e.ruleTriggered,
-            label: e.amount > 0 
-              ? `₹${(e.amount / 1000).toFixed(0)}k` 
-              : e.channel === 'DEVICE_BIND' ? 'Bound' : 'Dispute',
+            label: getEdgeLabel(e),
             isSuspicious: e.isSuspicious,
             isSevered: isSevered,
-            lineStyle: e.channel === 'DEVICE_BIND' ? 'dashed' : 'solid',
+            lineStyle: isDevice ? 'dashed' : 'solid',
             lineColor: isSevered 
               ? (isDark ? '#1F332C' : '#CBD5E1') 
+              : isDevice
+              ? '#F97316'
               : isMuleEdge 
               ? '#E11D48' 
-              : e.channel === 'DEVICE_BIND'
-              ? '#D97706'
-              : (isDark ? '#3E584F' : '#94A3B8'),
-            width: e.amount > 200000 ? 3.8 : e.amount > 50000 ? 2.8 : 1.8,
+              : '#10B981',
+            width: isMuleEdge ? 2.2 : isDevice ? 1.8 : 1.6,
           },
         };
       }),
@@ -217,19 +232,19 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
           selector: 'node',
           style: {
             'label': showLabels ? 'data(label)' : '',
-            'color': isDark ? '#F8FAFC' : '#0F172A',
-            'font-size': '11px',
+            'color': '#F8FAFC',
+            'font-size': '10px',
             'font-family': 'Inter, system-ui, sans-serif',
             'font-weight': 600,
             'text-valign': 'bottom',
-            'text-margin-y': 6,
+            'text-margin-y': 7,
             'background-color': 'data(color)',
             'border-width': 2.5,
             'border-color': 'data(borderColor)',
             'width': 'data(nodeSize)',
             'height': 'data(nodeSize)',
             'text-outline-width': 2,
-            'text-outline-color': isDark ? '#0A1210' : '#FFFFFF',
+            'text-outline-color': '#060E0B',
             'transition-property': 'background-color, line-color, target-arrow-color, opacity, border-color, underlay-color, underlay-opacity',
             'transition-duration': 0.25,
           },
@@ -255,10 +270,10 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         {
           selector: 'node:selected',
           style: {
-            'border-width': 4,
+            'border-width': 3.5,
             'border-color': '#06B6D4',
             'underlay-color': '#06B6D4',
-            'underlay-padding': 8,
+            'underlay-padding': 7,
             'underlay-opacity': 0.35,
           } as any,
         },
@@ -266,7 +281,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
           selector: 'node[?isFrozen]',
           style: {
             'opacity': 0.35,
-            'background-color': isDark ? '#1E293B' : '#E2E8F0',
+            'background-color': '#1E293B',
             'border-color': '#64748B',
             'border-style': 'dashed',
           },
@@ -280,13 +295,13 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'target-arrow-color': 'data(lineColor)',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'arrow-scale': 1.15,
+            'arrow-scale': 1.1,
             'label': showLabels ? 'data(label)' : '',
-            'font-size': '10px',
-            'color': isDark ? '#94A3B8' : '#64748B',
+            'font-size': '9px',
+            'color': '#94A3B8',
             'font-weight': 600,
             'text-outline-width': 1.5,
-            'text-outline-color': isDark ? '#0A1210' : '#FFFFFF',
+            'text-outline-color': '#060E0B',
             'text-rotation': 'autorotate',
           },
         },
@@ -323,7 +338,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         {
           selector: '.cross-highlighted-edge',
           style: {
-            'width': 5,
+            'width': 4.5,
             'line-color': '#06B6D4',
             'target-arrow-color': '#06B6D4',
             'underlay-color': '#06B6D4',
@@ -339,10 +354,14 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
           },
         },
       ],
-      layout: getLayoutConfig(layoutName),
+      layout: {
+        name: 'preset',
+        fit: true,
+        padding: 60,
+      },
     });
 
-    // Selection handlers
+    // Tap handlers
     cy.on('tap', 'node', (evt: EventObject) => {
       const nodeData = nodes.find((n) => n.id === evt.target.id());
       if (nodeData) {
@@ -356,7 +375,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       }
     });
 
-    // Hover Tooltips on Nodes
+    // Hover Tooltips
     cy.on('mouseover', 'node', (evt: EventObject) => {
       const target = evt.target;
       const data = target.data();
@@ -373,7 +392,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       if (nodeData.bankName) details.push({ label: 'Bank', value: nodeData.bankName });
       if (nodeData.accountNo) details.push({ label: 'Account', value: nodeData.accountNo });
       if (nodeData.deviceId) details.push({ label: 'Device ID', value: nodeData.deviceId });
-      if (nodeData.deviceModel) details.push({ label: 'Model', value: nodeData.deviceModel });
       if (nodeData.disputeAmount) details.push({ label: 'Dispute', value: `₹${nodeData.disputeAmount.toLocaleString('en-IN')}` });
 
       setHoverData({
@@ -392,7 +410,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       setHoverData(null);
     });
 
-    // Hover Tooltips on Edges
     cy.on('mouseover', 'edge', (evt: EventObject) => {
       const target = evt.target;
       const data = target.data();
@@ -403,7 +420,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       const details: { label: string; value: string }[] = [];
       if (edgeData.utr) details.push({ label: 'UTR', value: edgeData.utr });
       if (edgeData.channel) details.push({ label: 'Channel', value: edgeData.channel });
-      if (edgeData.ruleTriggered) details.push({ label: 'Signal', value: edgeData.ruleTriggered });
+      if (edgeData.ruleTriggered) details.push({ label: 'Rule', value: edgeData.ruleTriggered });
 
       setHoverData({
         x: pos.x,
@@ -411,7 +428,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         type: 'edge',
         title: edgeData.amount > 0 ? `₹${edgeData.amount.toLocaleString('en-IN')}` : edgeData.channel,
         subtitle: `${edgeData.source} → ${edgeData.target}`,
-        badge: edgeData.isSuspicious ? 'Flagged Flow' : 'Standard',
+        badge: edgeData.isSuspicious ? 'Flagged Hop' : 'Standard',
         badgeColor: edgeData.isSuspicious ? 'bg-rose-500 text-white' : 'bg-slate-500 text-white',
         details,
       });
@@ -438,7 +455,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   }, [
     visibleNodes.length, 
     visibleEdges.length, 
-    layoutName, 
     frozenNodeIds, 
     theme, 
     showLabels
@@ -475,7 +491,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     }
   }, [highlightedRingActive]);
 
-  // Cross-highlighting from Complaints Panel or Fraud Timeline Panel
+  // Cross-highlighting from Complaints or Timeline
   useEffect(() => {
     if (!cyRef.current) return;
     const cy = cyRef.current;
@@ -486,7 +502,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       cy.elements().removeClass('cross-highlighted-node cross-highlighted-edge');
       cy.elements().addClass('dimmed');
 
-      // Highlight target nodes
       if (highlightedNodeIds && highlightedNodeIds.length > 0) {
         highlightedNodeIds.forEach((id) => {
           const ele = cy.getElementById(id);
@@ -495,13 +510,10 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         });
       }
 
-      // Highlight target edge
       if (highlightedEdgeId) {
         const edgeEle = cy.getElementById(highlightedEdgeId);
         edgeEle.removeClass('dimmed');
         edgeEle.addClass('cross-highlighted-edge');
-
-        // Also ensure connected source/target nodes are clearly visible
         const src = edgeEle.data('source');
         const tgt = edgeEle.data('target');
         if (src) cy.getElementById(src).removeClass('dimmed');
@@ -515,134 +527,71 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     }
   }, [highlightedNodeIds, highlightedEdgeId, highlightedRingActive]);
 
-  function getLayoutConfig(lName: string) {
-    if (lName === 'cose') {
-      return {
-        name: 'cose',
-        idealEdgeLength: 130,
-        nodeOverlap: 25,
-        refresh: 20,
-        fit: true,
-        padding: 60,
-        randomize: false,
-        componentSpacing: 110,
-        nodeRepulsion: 450000,
-        edgeElasticity: 100,
-        nestingFactor: 5,
-        gravity: 75,
-        numIter: 1000,
-        initialTemp: 200,
-        coolingFactor: 0.95,
-        minTemp: 1.0,
-      };
-    }
-    return { name: lName, fit: true, padding: 60 };
-  }
-
   const handleZoomIn = () => cyRef.current?.zoom(cyRef.current.zoom() * 1.25);
   const handleZoomOut = () => cyRef.current?.zoom(cyRef.current.zoom() * 0.8);
   const handleFit = () => cyRef.current?.fit(undefined, 60);
-  const handleReset = () => {
-    cyRef.current?.reset();
-    cyRef.current?.fit(undefined, 60);
-  };
 
   return (
     <div
-      className={`rounded-2xl border transition-all h-[650px] flex flex-col relative overflow-hidden ${
+      className={`rounded-2xl border transition-all h-full w-full flex flex-col relative overflow-hidden select-none ${
         theme === 'dark'
-          ? 'bg-[#111E1A] border-[#1A332B]'
+          ? 'bg-[#091612] border-[#142921]'
           : 'bg-white border-slate-200/90 shadow-sm'
       }`}
     >
-      {/* Top Card Header */}
-      <div className="p-4 border-b border-inherit flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Top Inner Header Bar */}
+      <div className="px-5 py-3.5 border-b border-inherit flex flex-wrap items-center justify-between gap-4">
+        {/* Title + 11 Entities Badge + Subtitle */}
         <div>
           <div className="flex items-center gap-2">
-            <h3
+            <h2
               className={`text-sm font-bold tracking-tight ${
                 theme === 'dark' ? 'text-white' : 'text-slate-900'
               }`}
             >
-              Fraud-Ring Network Graph
-            </h3>
+              Network graph
+            </h2>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                 theme === 'dark'
-                  ? 'bg-[#1A312A] text-emerald-300'
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  ? 'bg-[#133026] text-[#34D399]'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
               }`}
             >
-              {visibleNodes.length} active entities
+              {visibleNodes.length} entities
             </span>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
-            Real-time transaction hops, mule dispersion trails, and device binding linkages
+            Connected activity across complaints, accounts, and devices
           </p>
         </div>
 
-        {/* Action Controls Top Right */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          {/* Legend Toggle Button */}
-          <button
-            onClick={() => setShowLegend(!showLegend)}
-            title="Toggle graph legend"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all btn-press ${
-              showLegend
-                ? 'bg-emerald-800 text-white border-emerald-700 font-bold'
-                : theme === 'dark'
-                ? 'bg-[#142320] border-[#1E3B33] text-slate-300 hover:text-white'
-                : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Legend</span>
-            {showLegend ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
+        {/* Search & Filters */}
+        <div className="flex items-center gap-2.5">
+          {/* Find an entity... Search */}
+          <div className="relative min-w-[180px] max-w-xs">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Find an entity..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter && setSearchFilter(e.target.value)}
+              className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border focus:outline-none transition-all ${
+                theme === 'dark'
+                  ? 'bg-[#0E1E19] border-[#18362B] text-slate-200 placeholder-slate-500 focus:border-emerald-500'
+                  : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-emerald-500'
+              }`}
+            />
+          </div>
 
-          {/* Reload button */}
-          <button
-            onClick={handleReset}
-            title="Reset graph view & layout"
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors btn-press"
-          >
-            <RotateCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Filter & Search Toolbar */}
-      <div
-        className={`px-4 py-2.5 border-b border-inherit flex flex-wrap items-center justify-between gap-3 ${
-          theme === 'dark' ? 'bg-[#0E1815]' : 'bg-[#FAFCFB]'
-        }`}
-      >
-        {/* Search input */}
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search VPA, account, IMEI..."
-            value={searchFilter}
-            onChange={(e) => setSearchFilter && setSearchFilter(e.target.value)}
-            className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all ${
-              theme === 'dark'
-                ? 'bg-[#142320] border-[#1E3B33] text-slate-200 placeholder-slate-500'
-                : 'bg-white border-slate-200 text-slate-800 placeholder-slate-400'
-            }`}
-          />
-        </div>
-
-        {/* Dropdowns & Filters Button */}
-        <div className="flex items-center gap-2">
-          {/* Entity Type Select */}
+          {/* All entity types Dropdown */}
           <select
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            className={`px-2.5 py-1.5 text-xs rounded-xl border focus:outline-none cursor-pointer ${
+            className={`px-3 py-1.5 text-xs rounded-xl border focus:outline-none cursor-pointer ${
               theme === 'dark'
-                ? 'bg-[#142320] border-[#1E3B33] text-slate-300'
-                : 'bg-white border-slate-200 text-slate-700'
+                ? 'bg-[#0E1E19] border-[#18362B] text-slate-300'
+                : 'bg-slate-50 border-slate-200 text-slate-700'
             }`}
           >
             <option value="ALL">All entity types</option>
@@ -652,14 +601,14 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             <option value="complaint">Complaints only</option>
           </select>
 
-          {/* Time Window Select */}
+          {/* Last 24 hours Dropdown */}
           <select
             value={timeRange}
             onChange={(e) => setTimeRange && setTimeRange(e.target.value)}
-            className={`px-2.5 py-1.5 text-xs rounded-xl border focus:outline-none cursor-pointer ${
+            className={`px-3 py-1.5 text-xs rounded-xl border focus:outline-none cursor-pointer ${
               theme === 'dark'
-                ? 'bg-[#142320] border-[#1E3B33] text-slate-300'
-                : 'bg-white border-slate-200 text-slate-700'
+                ? 'bg-[#0E1E19] border-[#18362B] text-slate-300'
+                : 'bg-slate-50 border-slate-200 text-slate-700'
             }`}
           >
             <option value="Last 24 hours">Last 24 hours</option>
@@ -667,14 +616,14 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             <option value="All time">All time</option>
           </select>
 
-          {/* Open Filters Slidebar */}
+          {/* Filter Sliders Button */}
           <button
             onClick={onOpenFilters}
-            title="Open threshold slidebars"
+            title="Open filters slidebar"
             className={`p-2 rounded-xl border transition-all btn-press ${
               theme === 'dark'
-                ? 'bg-[#142320] border-[#1E3B33] text-slate-300 hover:text-white'
-                : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs'
+                ? 'bg-[#0E1E19] border-[#18362B] text-slate-400 hover:text-white'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 shadow-2xs'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -684,10 +633,10 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
 
       {/* Main Canvas Area */}
       <div className="relative flex-1 dot-grid overflow-hidden">
-        {/* Status indicator top left */}
-        <div className="absolute top-3 left-4 z-10 flex items-center gap-2 text-[11px] font-medium text-slate-400 bg-white/80 dark:bg-black/60 px-3 py-1 rounded-full backdrop-blur-md border border-slate-200/60 dark:border-slate-800 shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Interactive Canvas • Cytoscape Engine</span>
+        {/* Top-Left Floating Badge inside Canvas */}
+        <div className="absolute top-4 left-5 z-10 flex items-center gap-2 text-[11px] font-medium text-slate-400 bg-[#07130F]/85 px-3 py-1 rounded-full backdrop-blur-md border border-[#163328] shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+          <span>Investigation network • 15 Oct 2026</span>
         </div>
 
         {/* Cytoscape Container */}
@@ -726,102 +675,31 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
           </div>
         )}
 
-        {/* Collapsible Interactive Legend */}
-        {showLegend && (
-          <div
-            className={`absolute top-12 right-4 z-20 p-3.5 rounded-2xl border shadow-xl backdrop-blur-md max-w-xs transition-all text-xs ${
-              theme === 'dark'
-                ? 'bg-[#0C1513]/95 border-[#1E3B33] text-slate-200'
-                : 'bg-white/95 border-slate-200 text-slate-800'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-inherit">
-              <span className="font-bold text-[11px] uppercase tracking-wider text-slate-400">
-                Visual Legend & Roles
-              </span>
-              <button
-                onClick={() => setShowLegend(false)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2 text-[11px]">
-              <div>
-                <p className="font-semibold text-[10px] text-slate-400 uppercase mb-1">Entities</p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#0284C7] ring-1 ring-sky-400 shrink-0" />
-                    <span>Victim / Source</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48] ring-1 ring-rose-400 shrink-0" />
-                    <span>Aggregator Mule</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#EA580C] ring-1 ring-orange-400 shrink-0" />
-                    <span>Secondary Mule</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-[#7C3AED] ring-1 ring-purple-400 shrink-0" />
-                    <span>Cashout QR Point</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rotate-45 bg-[#D97706] ring-1 ring-amber-400 shrink-0" />
-                    <span>Device Farm (IMEI)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-[#DC2626] ring-1 ring-red-400 shrink-0" />
-                    <span>NCRP Dispute</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-inherit pt-2">
-                <p className="font-semibold text-[10px] text-slate-400 uppercase mb-1">Connections</p>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-0.5 bg-[#E11D48]" />
-                    <span>Flagged UPI Transfer (Suspicious Hop)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-0.5 border-t border-dashed border-[#D97706]" />
-                    <span>Shared Hardware / Device Binding</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-0.5 bg-slate-400" />
-                    <span>Verified / Standard Transfer</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Floating Bottom Toolbar */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-lg transition-all bg-white/90 dark:bg-[#121F1B]/90 border-slate-200 dark:border-[#1E3B33]">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-lg transition-all bg-[#091713]/90 border-[#18362B]">
+          {/* Fit to screen */}
           <button
             onClick={handleFit}
-            title="Fit graph to canvas"
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors btn-press"
+            title="Fit graph"
+            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-[#142821] transition-colors btn-press"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
 
+          {/* Toggle Labels */}
           <button
             onClick={() => setShowLabels(!showLabels)}
             title={showLabels ? 'Hide labels' : 'Show labels'}
             className={`p-1.5 rounded-full transition-colors btn-press ${
               showLabels
-                ? 'text-emerald-700 dark:text-emerald-400'
-                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                ? 'text-[#34D399]'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             <Type className="w-3.5 h-3.5" />
           </button>
 
-          <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+          <div className="w-px h-3.5 bg-[#1C3A2F]" />
 
           {/* Spotlight Mule Ring */}
           <button
@@ -830,27 +708,29 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all btn-press ${
               highlightedRingActive
                 ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                : 'text-slate-500 dark:text-slate-300 hover:text-amber-500'
+                : 'text-slate-400 hover:text-amber-400'
             }`}
           >
             <AlertTriangle className="w-3 h-3" />
-            <span>Spotlight Ring</span>
+            <span>Spotlight</span>
           </button>
 
-          <button
-            onClick={handleZoomIn}
-            title="Zoom In"
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors btn-press"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-
+          {/* Zoom Out */}
           <button
             onClick={handleZoomOut}
             title="Zoom Out"
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors btn-press"
+            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-[#142821] transition-colors btn-press"
           >
             <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Zoom In */}
+          <button
+            onClick={handleZoomIn}
+            title="Zoom In"
+            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-[#142821] transition-colors btn-press"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

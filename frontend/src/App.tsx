@@ -1,44 +1,35 @@
 import React, { useState, useMemo } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
-import { WorkspaceHeader } from './components/WorkspaceHeader';
-import { MetricCards } from './components/MetricCards';
+import { Sidebar, LeftNavDrawer } from './components/Sidebar';
 import { GraphExplorer } from './components/GraphExplorer';
-import { AnalystControlPanel, ActiveControlTab } from './components/AnalystControlPanel';
-import { ExplainableAlertsCard } from './components/ExplainableAlertsCard';
+import { ComplaintsPanel } from './components/ComplaintsPanel';
+import { FraudTimelinePanel } from './components/FraudTimelinePanel';
+import { InvestigationSummaryPanel } from './components/InvestigationSummaryPanel';
 import { EntityInspector } from './components/EntityInspector';
 import { FilterSlidebar } from './components/FilterSlidebar';
-import { AlertsPanel } from './components/AlertsPanel';
-import { TimelineView } from './components/TimelineView';
-import { CaseManagement } from './components/CaseManagement';
-import { CounterfactualSimulator } from './components/CounterfactualSimulator';
 import { ComplaintIntakeModal } from './components/ComplaintIntakeModal';
 import { 
   SYNTHETIC_NODES, 
   SYNTHETIC_EDGES, 
   SYNTHETIC_ALERTS, 
   SYNTHETIC_TIMELINE, 
-  SYNTHETIC_CASES,
-  DEMO_COMPLAINTS
+  DEMO_COMPLAINTS 
 } from './mock/syntheticData';
 import { 
   GraphNodeData, 
   GraphEdgeData, 
-  CaseFile, 
-  SuspiciousAlert, 
   ComplaintRecord, 
   ComplaintStatus, 
   TimelineEvent 
 } from './types';
-import { FileText, Plus, ShieldCheck, ArrowRight } from 'lucide-react';
+import { X } from 'lucide-react';
 
 function DashboardContent() {
   const { theme } = useTheme();
 
-  // Navigation & View state
-  const [activeSection, setActiveSection] = useState('investigations');
-  const [activeTab, setActiveTab] = useState('graph');
+  // Active Right Drawer ('complaints' | 'timeline' | 'summary' | null)
+  const [activeDrawer, setActiveDrawer] = useState<LeftNavDrawer>(null);
 
   // Search & Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,12 +48,10 @@ function DashboardContent() {
   const [isFilterSlidebarOpen, setIsFilterSlidebarOpen] = useState(false);
   const [complaintModalOpen, setComplaintModalOpen] = useState(false);
 
-  // Graph and Core Data state
+  // Core Data state
   const [nodes, setNodes] = useState<GraphNodeData[]>(SYNTHETIC_NODES);
   const [edges, setEdges] = useState<GraphEdgeData[]>(SYNTHETIC_EDGES);
-  const [alerts] = useState(SYNTHETIC_ALERTS);
-  const [timeline] = useState(SYNTHETIC_TIMELINE);
-  const [cases, setCases] = useState<CaseFile[]>(SYNTHETIC_CASES);
+  const [timeline] = useState<TimelineEvent[]>(SYNTHETIC_TIMELINE);
 
   // Complaints state with LocalStorage persistence
   const [complaints, setComplaints] = useState<ComplaintRecord[]>(() => {
@@ -75,13 +64,22 @@ function DashboardContent() {
     return DEMO_COMPLAINTS;
   });
 
-  // Analyst Control Panel & Selection state
-  const [activeControlTab, setActiveControlTab] = useState<ActiveControlTab>('complaints');
+  // Selection & Freezing state
   const [selectedEntity, setSelectedEntity] = useState<GraphNodeData | null>(null);
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintRecord | null>(null);
   const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
   const [frozenNodeIds, setFrozenNodeIds] = useState<Set<string>>(new Set());
   const [highlightedRingActive, setHighlightedRingActive] = useState(false);
+
+  // Toggle Left Nav Drawers
+  const handleToggleDrawer = (drawer: 'complaints' | 'timeline' | 'summary') => {
+    if (activeDrawer === drawer) {
+      setActiveDrawer(null);
+    } else {
+      setActiveDrawer(drawer);
+      setSelectedEntity(null);
+    }
+  };
 
   // Status Updater for Complaints (with LocalStorage write)
   const handleUpdateComplaintStatus = (complaintId: string, newStatus: ComplaintStatus) => {
@@ -122,11 +120,11 @@ function DashboardContent() {
     }
   };
 
-  // Node selection from Graph -> opens entity inspector in Analyst Panel
+  // Node selection from Graph -> Opens entity inspector
   const handleSelectEntityFromGraph = (entity: GraphNodeData | null) => {
     setSelectedEntity(entity);
     if (entity) {
-      setActiveControlTab('entity_inspector');
+      setActiveDrawer(null);
     }
   };
 
@@ -170,82 +168,11 @@ function DashboardContent() {
     });
   };
 
-  const handleClearAllFreezes = () => {
-    setFrozenNodeIds(new Set());
-  };
-
-  // Investigate in Graph cross-link
-  const handleInvestigateInGraph = (clusterId: string) => {
-    setActiveTab('graph');
-    setHighlightedRingActive(true);
-  };
-
-  // Handle selecting an alert to inspect in drawer
-  const handleSelectAlert = (alt: SuspiciousAlert) => {
-    const primaryNode = nodes.find((n) => n.id === 'ACC_PRIMARY_MULE') || nodes[0];
-    setSelectedEntity(primaryNode);
-    setActiveControlTab('entity_inspector');
-    setHighlightedRingActive(true);
-    setActiveTab('graph');
-  };
-
-  // Add Complaint
+  // Add Complaint Modal
   const handleAddComplaint = (newComplaintNode: GraphNodeData, newEdge: GraphEdgeData) => {
     setNodes((prev) => [newComplaintNode, ...prev]);
     setEdges((prev) => [newEdge, ...prev]);
     setSelectedEntity(newComplaintNode);
-    setActiveControlTab('entity_inspector');
-    setActiveTab('graph');
-  };
-
-  // Case management handlers
-  const handleAddCaseNote = (caseId: string, noteText: string) => {
-    setCases((prev) =>
-      prev.map((c) => {
-        if (c.id === caseId) {
-          return {
-            ...c,
-            notes: [
-              ...c.notes,
-              {
-                id: `N-${Date.now()}`,
-                author: 'Analyst (You)',
-                timestamp: 'Just now',
-                text: noteText,
-              },
-            ],
-          };
-        }
-        return c;
-      })
-    );
-  };
-
-  const handleUpdateCaseStatus = (caseId: string, newStatus: CaseFile['status']) => {
-    setCases((prev) =>
-      prev.map((c) => (c.id === caseId ? { ...c, status: newStatus } : c))
-    );
-  };
-
-  const handleExportCase = () => {
-    const dossier = {
-      investigationId: 'INV-2026-084',
-      name: 'Operation Chakravyuh - UPI Mule Ring',
-      status: 'In review',
-      flaggedVolume: 480000,
-      nodesCount: nodes.length,
-      alertsCount: alerts.length,
-      complaintsCount: complaints.length,
-      exportedAt: new Date().toISOString(),
-      disclaimer: 'Generated by Anvik decision-support system. Synthetic demonstration dataset.',
-    };
-    const blob = new Blob([JSON.stringify(dossier, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `INV-2026-084_Dossier.json`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const resetFilters = () => {
@@ -257,219 +184,127 @@ function DashboardContent() {
     setSearchQuery('');
   };
 
-  // Map sidebar section clicks to tabs
-  const handleSelectSidebarSection = (section: string) => {
-    setActiveSection(section);
-    if (section === 'investigations') setActiveTab('graph');
-    if (section === 'alerts') setActiveTab('alerts');
-    if (section === 'timeline') setActiveTab('timeline');
-    if (section === 'cases') setActiveTab('cases');
-    if (section === 'counterfactual') setActiveTab('counterfactual');
-    if (section === 'overview') setActiveTab('overview');
-  };
-
   return (
     <div
-      className={`min-h-screen flex font-sans transition-colors duration-250 ${
-        theme === 'dark' ? 'bg-[#091311] text-slate-100' : 'bg-[#F8FAF9] text-slate-800'
+      className={`h-screen w-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden ${
+        theme === 'dark' ? 'bg-[#060E0B] text-slate-100' : 'bg-[#F4F7F5] text-slate-800'
       }`}
     >
-      {/* Collapsible Left Navigation Sidebar */}
-      <Sidebar
-        activeSection={activeSection}
-        onSelectSection={handleSelectSidebarSection}
-        investigationCount={8}
-        alertCount={alerts.length}
+      {/* 1. Top Header Bar (Brand Logo, Breadcrumbs, Demo Workspace, Controls) */}
+      <Header
+        currentInvestigationId="INV-2026-084"
+        onOpenSearch={() => setIsFilterSlidebarOpen(true)}
+        onOpenAlerts={() => handleToggleDrawer('summary')}
+        alertCount={3}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header */}
-        <Header
-          currentInvestigationId="INV-2026-084"
-          onOpenSearch={() => setIsFilterSlidebarOpen(true)}
-          onOpenAlerts={() => setActiveTab('alerts')}
-          alertCount={alerts.length}
+      {/* 2. Main Investigation Workspace (Left Action Rail + Center Graph + Slide-in Drawers) */}
+      <div className="flex-1 flex min-h-0 relative overflow-hidden">
+        {/* Left Action Rail matching Screenshot (Network active icon, Complaints, Timeline, Past Record) */}
+        <Sidebar
+          activeDrawer={activeDrawer}
+          onToggleDrawer={handleToggleDrawer}
+          complaintCount={complaints.length}
         />
 
-        {/* Scrollable Page Body */}
-        <main className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-          {/* Workspace Title & Tab Navigation */}
-          <WorkspaceHeader
-            activeTab={activeTab}
-            onSelectTab={setActiveTab}
-            onExportCase={handleExportCase}
-            onNewInvestigation={() => setComplaintModalOpen(true)}
-            complaintCount={complaints.length}
-            transactionCount={edges.filter((e) => e.amount > 0).length}
-            alertCount={alerts.length}
+        {/* Center / Full-Width Graph Container Card */}
+        <main className="flex-1 flex flex-col min-w-0 p-3 h-full overflow-hidden">
+          <GraphExplorer
+            nodes={nodes}
+            edges={edges}
+            selectedEntity={selectedEntity}
+            onSelectEntity={handleSelectEntityFromGraph}
+            frozenNodeIds={frozenNodeIds}
+            highlightedRingActive={highlightedRingActive}
+            setHighlightedRingActive={setHighlightedRingActive}
+            highlightedNodeIds={highlightedNodeIds}
+            highlightedEdgeId={highlightedEdgeId}
+            searchFilter={searchQuery}
+            setSearchFilter={setSearchQuery}
+            minRiskScore={minRiskScore}
+            minAmount={minAmount}
+            filterTypes={filterTypes}
+            layoutName={layoutName}
+            onOpenFilters={() => setIsFilterSlidebarOpen(true)}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
           />
-
-          {/* 4 Metric KPI Cards strip */}
-          <MetricCards
-            connectedAccountsCount={nodes.filter((n) => n.type === 'account').length}
-            complaintsCount={complaints.length}
-            flaggedFlowFormatted="₹4.80L"
-            signalsCount={alerts.length}
-            sharedDevicesCount={nodes.filter((n) => n.type === 'device').length}
-          />
-
-          {/* Primary View: Center Graph (68%) + Right Analyst Control Panel (32%) */}
-          {(activeTab === 'graph' || activeTab === 'overview') && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* Center: Expanded Interactive Fraud Graph (approx 67-70% width) */}
-                <div className="lg:col-span-8">
-                  <GraphExplorer
-                    nodes={nodes}
-                    edges={edges}
-                    selectedEntity={selectedEntity}
-                    onSelectEntity={handleSelectEntityFromGraph}
-                    frozenNodeIds={frozenNodeIds}
-                    highlightedRingActive={highlightedRingActive}
-                    setHighlightedRingActive={setHighlightedRingActive}
-                    highlightedNodeIds={highlightedNodeIds}
-                    highlightedEdgeId={highlightedEdgeId}
-                    searchFilter={searchQuery}
-                    setSearchFilter={setSearchQuery}
-                    minRiskScore={minRiskScore}
-                    minAmount={minAmount}
-                    filterTypes={filterTypes}
-                    layoutName={layoutName}
-                    onOpenFilters={() => setIsFilterSlidebarOpen(true)}
-                    timeRange={timeRange}
-                    setTimeRange={setTimeRange}
-                  />
-                </div>
-
-                {/* Right: Analyst Control Panel with 3 Interactive Buttons (Complaints, Timeline, Summary) */}
-                <div className="lg:col-span-4 h-[650px]">
-                  <AnalystControlPanel
-                    nodes={nodes}
-                    edges={edges}
-                    complaints={complaints}
-                    timeline={timeline}
-                    selectedEntity={selectedEntity}
-                    onSelectEntity={setSelectedEntity}
-                    selectedComplaint={selectedComplaint}
-                    onSelectComplaint={handleSelectComplaint}
-                    selectedTimelineEvent={selectedTimelineEvent}
-                    onSelectTimelineEvent={handleSelectTimelineEvent}
-                    onUpdateComplaintStatus={handleUpdateComplaintStatus}
-                    isFrozen={selectedEntity ? frozenNodeIds.has(selectedEntity.id) : false}
-                    onToggleFreeze={handleToggleFreeze}
-                    activeControlTab={activeControlTab}
-                    setActiveControlTab={setActiveControlTab}
-                  />
-                </div>
-              </div>
-
-              {/* Explainable Alerts Section below primary workspace */}
-              <div className="pt-2">
-                <ExplainableAlertsCard
-                  alerts={alerts}
-                  onOpenFullAlerts={() => setActiveTab('alerts')}
-                  onSelectAlert={handleSelectAlert}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Full Complaints Tab View */}
-          {activeTab === 'complaints' && (
-            <div
-              className={`p-6 rounded-2xl border ${
-                theme === 'dark' ? 'bg-[#111E1A] border-[#1A332B]' : 'bg-white border-slate-200/90 shadow-sm'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold">Linked NCRP & Bank Dispute Reports</h3>
-                  <p className="text-xs text-slate-400">Formal cybercrime portal complaints</p>
-                </div>
-                <button
-                  onClick={() => setComplaintModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A5C36] hover:bg-[#07472A] text-white rounded-xl text-xs font-semibold shadow-xs btn-press"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Link New Complaint</span>
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {complaints.map((cmp) => (
-                  <div
-                    key={cmp.id}
-                    className={`p-4 rounded-xl border flex items-center justify-between ${
-                      theme === 'dark'
-                        ? 'bg-[#0E1715] border-[#1A332B]'
-                        : 'bg-slate-50 border-slate-200/80'
-                    }`}
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-rose-500" />
-                        <span className="font-mono font-bold text-xs">{cmp.complaintRef}</span>
-                        <span
-                          className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${
-                            cmp.status === 'under_investigation'
-                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                              : cmp.status === 'resolved'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          }`}
-                        >
-                          {cmp.status === 'under_investigation'
-                            ? 'Under Investigation'
-                            : cmp.status === 'resolved'
-                            ? 'Resolved'
-                            : 'Pending Review'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{cmp.shortDescription}</p>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="font-mono font-bold text-sm text-rose-600 dark:text-rose-400">
-                        ₹{cmp.disputeAmount?.toLocaleString('en-IN') || '4,80,000'}
-                      </span>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Disputed Amount</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline Tab */}
-          {activeTab === 'timeline' && <TimelineView events={timeline} />}
-
-          {/* Alerts Tab */}
-          {activeTab === 'alerts' && (
-            <AlertsPanel alerts={alerts} onInvestigateInGraph={handleInvestigateInGraph} />
-          )}
-
-          {/* Case Notes Tab */}
-          {activeTab === 'cases' && (
-            <CaseManagement
-              cases={cases}
-              onAddNote={handleAddCaseNote}
-              onUpdateStatus={handleUpdateCaseStatus}
-            />
-          )}
-
-          {/* Counterfactual Tab */}
-          {activeTab === 'counterfactual' && (
-            <CounterfactualSimulator
-              nodes={nodes}
-              edges={edges}
-              frozenNodeIds={frozenNodeIds}
-              onToggleFreeze={handleToggleFreeze}
-              onClearAllFreezes={handleClearAllFreezes}
-              onOpenGraph={() => setActiveTab('graph')}
-            />
-          )}
         </main>
+
+        {/* 3. Slide-In Interactive Panel Drawer (Complaints, Timeline, Past Record, Entity Inspector) */}
+        {(activeDrawer || selectedEntity) && (
+          <div
+            className={`w-[420px] max-w-[90vw] shrink-0 h-full border-l flex flex-col shadow-2xl z-30 transition-all duration-300 animate-in slide-in-from-right ${
+              theme === 'dark'
+                ? 'bg-[#091612] border-[#142921]'
+                : 'bg-white border-slate-200'
+            }`}
+          >
+            {/* Drawer Close Bar */}
+            <div className="px-4 py-3 border-b border-inherit flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                {activeDrawer === 'complaints'
+                  ? 'Complaints & Dispute Records'
+                  : activeDrawer === 'timeline'
+                  ? 'Fraud Timeline Sequence'
+                  : activeDrawer === 'summary'
+                  ? 'Investigation Summary & Audit'
+                  : 'Entity Details & Inspection'}
+              </span>
+              <button
+                onClick={() => {
+                  setActiveDrawer(null);
+                  setSelectedEntity(null);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors btn-press"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activeDrawer === 'complaints' && (
+                <ComplaintsPanel
+                  complaints={complaints}
+                  onUpdateComplaintStatus={handleUpdateComplaintStatus}
+                  selectedComplaintId={selectedComplaint?.id || null}
+                  onSelectComplaint={handleSelectComplaint}
+                  onClose={() => setActiveDrawer(null)}
+                />
+              )}
+
+              {activeDrawer === 'timeline' && (
+                <FraudTimelinePanel
+                  timeline={timeline}
+                  selectedEventId={selectedTimelineEvent?.id || null}
+                  onSelectEvent={handleSelectTimelineEvent}
+                  onClose={() => setActiveDrawer(null)}
+                />
+              )}
+
+              {activeDrawer === 'summary' && (
+                <InvestigationSummaryPanel
+                  nodes={nodes}
+                  edges={edges}
+                  complaints={complaints}
+                  onClose={() => setActiveDrawer(null)}
+                />
+              )}
+
+              {selectedEntity && !activeDrawer && (
+                <EntityInspector
+                  entity={selectedEntity}
+                  onClose={() => setSelectedEntity(null)}
+                  edges={edges}
+                  nodes={nodes}
+                  isFrozen={frozenNodeIds.has(selectedEntity.id)}
+                  onToggleFreeze={handleToggleFreeze}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter & Threshold Sliders Slidebar */}
