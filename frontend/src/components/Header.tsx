@@ -5,7 +5,8 @@ import {
   Bell, 
   Sun, 
   Moon, 
-  Network
+  Network,
+  Download
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -14,6 +15,7 @@ interface HeaderProps {
   onOpenSearch: () => void;
   onOpenAlerts: () => void;
   alertCount?: number;
+  onDownloadReport?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSearch,
   onOpenAlerts,
   alertCount = 3,
+  onDownloadReport,
 }) => {
   const { theme, toggleTheme } = useTheme();
 
@@ -87,6 +90,18 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
           <span>Demo workspace</span>
         </div>
+
+        {/* Download Report Button */}
+        {onDownloadReport && (
+          <button
+            onClick={onDownloadReport}
+            title="Download Forensic Investigation Report (HTML + PDF with Graph Analysis)"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#0D6B42] hover:bg-[#0A5634] text-white transition-all shadow-xs btn-press"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Download Report</span>
+          </button>
+        )}
 
         {/* Search Icon */}
         <button

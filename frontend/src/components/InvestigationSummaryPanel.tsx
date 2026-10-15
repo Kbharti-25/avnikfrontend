@@ -11,7 +11,8 @@ import {
   X,
   Info,
   DollarSign,
-  Network
+  Network,
+  Download
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { GraphNodeData, GraphEdgeData, ComplaintRecord } from '../types';
@@ -21,6 +22,7 @@ interface InvestigationSummaryPanelProps {
   edges: GraphEdgeData[];
   complaints: ComplaintRecord[];
   onClose?: () => void;
+  onDownloadReport?: () => void;
 }
 
 export const InvestigationSummaryPanel: React.FC<InvestigationSummaryPanelProps> = ({
@@ -28,6 +30,7 @@ export const InvestigationSummaryPanel: React.FC<InvestigationSummaryPanelProps>
   edges,
   complaints,
   onClose,
+  onDownloadReport,
 }) => {
   const { theme } = useTheme();
 
@@ -238,6 +241,17 @@ export const InvestigationSummaryPanel: React.FC<InvestigationSummaryPanelProps>
             </div>
           </div>
         </div>
+
+        {/* Action Button: Download Comprehensive Forensic Report */}
+        {onDownloadReport && (
+          <button
+            onClick={onDownloadReport}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs bg-[#0D6B42] hover:bg-[#0A5634] text-white transition-all shadow-md btn-press cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download Investigation Report (HTML & PDF)</span>
+          </button>
+        )}
 
         {/* Legal Disclaimer Box */}
         <div

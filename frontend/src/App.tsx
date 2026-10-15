@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Header } from './components/Header';
 import { Sidebar, LeftNavDrawer } from './components/Sidebar';
@@ -8,6 +8,7 @@ import { FraudTimelinePanel } from './components/FraudTimelinePanel';
 import { InvestigationSummaryPanel } from './components/InvestigationSummaryPanel';
 import { FilterSlidebar } from './components/FilterSlidebar';
 import { ComplaintIntakeModal } from './components/ComplaintIntakeModal';
+import { downloadInvestigationReport } from './utils/reportGenerator';
 import { 
   SYNTHETIC_NODES, 
   SYNTHETIC_EDGES, 
@@ -68,6 +69,23 @@ function DashboardContent() {
   const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
   const [frozenNodeIds, setFrozenNodeIds] = useState<Set<string>>(new Set());
   const [highlightedRingActive, setHighlightedRingActive] = useState(false);
+
+  // Graph Image Exporter Ref for Reports
+  const graphExportRef = useRef<(() => string | null) | null>(null);
+
+  // Download Comprehensive Forensic Investigation Report (Descriptive Analysis + Graph)
+  const handleDownloadReport = () => {
+    const graphImageBase64 = graphExportRef.current ? graphExportRef.current() : null;
+    downloadInvestigationReport({
+      caseId: 'INV-2026-084',
+      graphImageBase64,
+      nodes,
+      edges,
+      complaints,
+      timeline,
+      analystName: 'Bharath K (Member 3)',
+    });
+  };
 
   // Toggle Left Nav Drawers
   const handleToggleDrawer = (drawer: 'complaints' | 'timeline' | 'summary') => {
@@ -191,6 +209,7 @@ function DashboardContent() {
         onOpenSearch={() => setIsFilterSlidebarOpen(true)}
         onOpenAlerts={() => handleToggleDrawer('summary')}
         alertCount={3}
+        onDownloadReport={handleDownloadReport}
       />
 
       {/* 2. Main Investigation Workspace (Left Action Rail + Center Graph + Slide-in Drawers) */}
@@ -224,6 +243,8 @@ function DashboardContent() {
             timeRange={timeRange}
             setTimeRange={setTimeRange}
             onToggleFreeze={handleToggleFreeze}
+            onRegisterExport={(fn) => { graphExportRef.current = fn; }}
+            onDownloadReport={handleDownloadReport}
           />
         </main>
 
@@ -280,6 +301,7 @@ function DashboardContent() {
                   edges={edges}
                   complaints={complaints}
                   onClose={() => setActiveDrawer(null)}
+                  onDownloadReport={handleDownloadReport}
                 />
               )}
             </div>

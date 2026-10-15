@@ -8,6 +8,7 @@ import {
   Type, 
   AlertTriangle,
   SlidersHorizontal,
+  Download
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { GraphNodeData, GraphEdgeData } from '../types';
@@ -32,6 +33,8 @@ interface GraphExplorerProps {
   timeRange?: string;
   setTimeRange?: (tr: string) => void;
   onToggleFreeze?: (nodeId: string) => void;
+  onRegisterExport?: (exporter: () => string | null) => void;
+  onDownloadReport?: () => void;
 }
 
 interface HoveredNodeInfo extends GraphNodeData {
@@ -58,6 +61,8 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   onOpenFilters,
   timeRange = 'Last 24 hours',
   setTimeRange,
+  onRegisterExport,
+  onDownloadReport,
 }) => {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -664,6 +669,25 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     }
   }, [highlightedNodeIds, highlightedEdgeId, highlightedRingActive]);
 
+  // Register graph image exporter for forensic reporting
+  useEffect(() => {
+    if (onRegisterExport) {
+      onRegisterExport(() => {
+        if (!cyRef.current) return null;
+        try {
+          return cyRef.current.png({
+            full: true,
+            scale: 2,
+            bg: '#07130F',
+          });
+        } catch (e) {
+          console.error('Failed to export graph image', e);
+          return null;
+        }
+      });
+    }
+  }, [onRegisterExport]);
+
   const handleZoomIn = () => cyRef.current?.zoom(cyRef.current.zoom() * 1.25);
   const handleZoomOut = () => cyRef.current?.zoom(cyRef.current.zoom() * 0.8);
   const handleFit = () => cyRef.current?.fit(undefined, 60);
@@ -765,6 +789,22 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
           </button>
+
+          {/* Download Report Button */}
+          {onDownloadReport && (
+            <button
+              onClick={onDownloadReport}
+              title="Download Forensic Investigation Report (Descriptive Analysis + Graph)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all btn-press ${
+                theme === 'dark'
+                  ? 'bg-[#0E261E] hover:bg-[#153D30] border-[#1C4E3D] text-[#34D399]'
+                  : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Download Report</span>
+            </button>
+          )}
         </div>
       </div>
 
