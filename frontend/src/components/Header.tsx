@@ -3,13 +3,10 @@ import {
   ChevronRight, 
   Search, 
   Bell, 
-  Sun, 
-  Moon, 
   Network,
   Download,
   Plus
 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   currentInvestigationId?: string;
@@ -32,16 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   isGraphLoaded = false,
   onLogout,
 }) => {
-  const { theme, toggleTheme } = useTheme();
-
   return (
-    <header
-      className={`h-14 px-5 flex items-center justify-between border-b transition-colors duration-200 select-none z-20 ${
-        theme === 'dark'
-          ? 'bg-[#07130F] border-[#132B22]'
-          : 'bg-white border-slate-200/90 shadow-2xs'
-      }`}
-    >
+    <header className="h-14 px-5 flex items-center justify-between border-b border-slate-200/90 bg-white shadow-2xs select-none z-20">
       {/* Left: Brand Logo + Breadcrumbs */}
       <div className="flex items-center gap-4">
         {/* Brand Icon & Logo */}
@@ -50,11 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Network className="w-4 h-4 stroke-[2.4]" />
           </div>
           <div className="flex items-baseline">
-            <span
-              className={`text-base font-bold tracking-tight ${
-                theme === 'dark' ? 'text-white' : 'text-slate-900'
-              }`}
-            >
+            <span className="text-base font-bold tracking-tight text-slate-900">
               anvik
             </span>
             <span className="text-[#10B981] font-bold text-lg leading-none ml-0.5">•</span>
@@ -62,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Vertical Divider */}
-        <div className="w-px h-5 bg-slate-300 dark:bg-[#1A382E] mx-1" />
+        <div className="w-px h-5 bg-slate-200 mx-1" />
 
         {/* Breadcrumbs */}
         <div className="flex items-center gap-2 text-xs">
@@ -73,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Workspace
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <span 
             onClick={onReturnToIntake}
             className="text-slate-400 font-medium hover:text-[#007065] cursor-pointer transition-colors"
@@ -81,25 +66,21 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {isGraphLoaded ? 'Investigations' : 'Intake'}
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-          <span
-            className={`font-mono font-semibold text-xs ${
-              theme === 'dark' ? 'text-white' : 'text-slate-900'
-            }`}
-          >
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          <span className="font-mono font-semibold text-xs text-slate-900">
             {currentInvestigationId}
           </span>
         </div>
       </div>
 
-      {/* Right: Demo Workspace Pill, Search, Alerts, Theme toggle, Avatar */}
+      {/* Right: Demo Workspace Pill, Search, Alerts, Avatar */}
       <div className="flex items-center gap-3">
         {/* New Case / Intake Button */}
         {isGraphLoaded && onReturnToIntake && (
           <button
             onClick={onReturnToIntake}
             title="Enter new Transaction ID & Device ID"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-2xs btn-press"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-all shadow-2xs btn-press"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">New Case</span>
@@ -107,13 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Demo Workspace Pill */}
-        <div
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
-            theme === 'dark'
-              ? 'bg-[#0B2019] border-[#173D30] text-[#34D399]'
-              : 'bg-[#EAF7EE] border-emerald-200 text-[#0B6938]'
-          }`}
-        >
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-[#EAF7EE] border-emerald-200 text-[#0B6938]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
           <span>Demo workspace</span>
         </div>
@@ -134,11 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenSearch}
           title="Search entities (Ctrl+K)"
-          className={`p-1.5 rounded-lg transition-colors btn-press ${
-            theme === 'dark'
-              ? 'text-slate-400 hover:text-white hover:bg-[#142821]'
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-          }`}
+          className="p-1.5 rounded-lg transition-colors btn-press text-slate-500 hover:text-slate-900 hover:bg-slate-100"
         >
           <Search className="w-4 h-4" />
         </button>
@@ -147,29 +118,12 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenAlerts}
           title="Explainable alerts"
-          className={`relative p-1.5 rounded-lg transition-colors btn-press ${
-            theme === 'dark'
-              ? 'text-slate-400 hover:text-white hover:bg-[#142821]'
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-          }`}
+          className="relative p-1.5 rounded-lg transition-colors btn-press text-slate-500 hover:text-slate-900 hover:bg-slate-100"
         >
           <Bell className="w-4 h-4" />
           {alertCount > 0 && (
             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500" />
           )}
-        </button>
-
-        {/* Theme Switcher */}
-        <button
-          onClick={toggleTheme}
-          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-          className={`p-1.5 rounded-lg transition-colors btn-press ${
-            theme === 'dark'
-              ? 'text-amber-400 hover:text-amber-300 hover:bg-[#142821]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
         {/* Avatar BK with Logout Action */}

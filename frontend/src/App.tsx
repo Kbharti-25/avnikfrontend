@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { LoginPage } from './components/LoginPage';
 import { Header } from './components/Header';
 import { Sidebar, LeftNavDrawer } from './components/Sidebar';
@@ -35,8 +35,6 @@ import {
 import { X } from 'lucide-react';
 
 function DashboardContent() {
-  const { theme } = useTheme();
-
   // Authentication State: Login Page is Stage 1 (The VERY FIRST SCREEN)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [analystGovtId, setAnalystGovtId] = useState<string>('LEA-IND-8812');
@@ -244,11 +242,7 @@ function DashboardContent() {
   }
 
   return (
-    <div
-      className={`h-screen w-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden ${
-        theme === 'dark' ? 'bg-[#060E0B] text-slate-100' : 'bg-[#FBF9F4] text-slate-800'
-      }`}
-    >
+    <div className="h-screen w-screen flex flex-col font-sans overflow-hidden bg-[#FBF9F4] text-slate-800">
       {/* 1. Top Header Bar (Brand Logo, Breadcrumbs, Demo Workspace, Controls) */}
       <Header
         currentInvestigationId={activeCaseId}

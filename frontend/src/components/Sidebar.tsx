@@ -5,7 +5,6 @@ import {
   Clock, 
   History
 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 
 export type LeftNavDrawer = 'complaints' | 'timeline' | 'summary' | null;
 
@@ -20,26 +19,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleDrawer,
   complaintCount = 4,
 }) => {
-  const { theme } = useTheme();
-
   return (
-    <aside
-      className={`w-16 shrink-0 flex flex-col items-center py-4 space-y-3.5 select-none z-20 ${
-        theme === 'dark'
-          ? 'bg-[#060E0B] text-slate-300'
-          : 'bg-[#F4F7F5] text-slate-700'
-      }`}
-    >
+    <aside className="w-16 shrink-0 flex flex-col items-center py-4 space-y-3.5 select-none z-20 bg-[#F4F7F5] text-slate-700 border-r border-[#E8E4D8]">
       {/* 1. Main Network Graph Active Button (Icon Only with Hover Tooltip) */}
       <div className="relative group">
         <button
           onClick={() => onToggleDrawer(activeDrawer ? (null as any) : 'complaints')}
           title="Network Graph"
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
-            theme === 'dark'
-              ? 'bg-[#0D241C] border border-[#10B981] text-[#10B981] shadow-xs'
-              : 'bg-emerald-50 border border-emerald-600 text-emerald-700 shadow-xs'
-          }`}
+          className="w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press bg-emerald-50 border border-emerald-600 text-emerald-700 shadow-xs"
         >
           <Network className="w-5 h-5 stroke-[2.2]" />
         </button>
@@ -56,19 +43,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={() => onToggleDrawer('complaints')}
           title="Complaints"
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press relative ${
             activeDrawer === 'complaints'
-              ? theme === 'dark'
-                ? 'bg-[#0D241C] border border-[#10B981] text-[#34D399] shadow-xs'
-                : 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
-              : theme === 'dark'
-              ? 'bg-[#0A1612] border border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
+              ? 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
               : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
           }`}
         >
           <FileText className="w-4 h-4" />
           {complaintCount > 0 && (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#060E0B]" />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
           )}
         </button>
 
@@ -89,11 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title="Timeline"
           className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
             activeDrawer === 'timeline'
-              ? theme === 'dark'
-                ? 'bg-[#0D241C] border border-[#10B981] text-[#34D399] shadow-xs'
-                : 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
-              : theme === 'dark'
-              ? 'bg-[#0A1612] border border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
+              ? 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
               : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
           }`}
         >
@@ -114,11 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title="Past Record"
           className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all btn-press ${
             activeDrawer === 'summary'
-              ? theme === 'dark'
-                ? 'bg-[#0D241C] border border-[#10B981] text-[#34D399] shadow-xs'
-                : 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
-              : theme === 'dark'
-              ? 'bg-[#0A1612] border border-[#142B22] text-slate-300 hover:border-[#1E3B33] hover:text-white'
+              ? 'bg-emerald-50 border border-emerald-600 text-emerald-800 shadow-xs'
               : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-2xs'
           }`}
         >

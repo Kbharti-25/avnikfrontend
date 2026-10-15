@@ -6,20 +6,15 @@
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
-    transition: background-color 0.25s ease-out, color 0.25s ease-out;
+    background-color: #FBF9F4;
+    color: #1E293B;
   }
 }
 
-/* Light / Dark Mode dot grids */
+/* Light dot grid */
 .dot-grid {
   background-color: #F8FAF9;
   background-image: radial-gradient(#CBD5E1 1.2px, transparent 1.2px);
-  background-size: 24px 24px;
-}
-
-.dark .dot-grid {
-  background-color: #0A1210;
-  background-image: radial-gradient(#1E332B 1.2px, transparent 1.2px);
   background-size: 24px 24px;
 }
 
@@ -38,19 +33,11 @@
   border-radius: 9999px;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #1E332B;
-}
-
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #2D4A3F;
-}
-
-/* Active button scaling compliant with better-ui */
+/* Active button scaling */
 .btn-press {
   transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), background-color 0.15s ease-out, box-shadow 0.15s ease-out;
 }
