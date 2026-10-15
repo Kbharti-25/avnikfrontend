@@ -2,13 +2,21 @@ import React, { useState, useMemo, useRef } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Header } from './components/Header';
 import { Sidebar, LeftNavDrawer } from './components/Sidebar';
-import { GraphExplorer } from './components/GraphExplorer';
+import { NetworkGraphCanvas } from './components/NetworkGraphCanvas';
+import { TransactionTimelineBar } from './components/TransactionTimelineBar';
+import { InvestigationInsightsRail } from './components/InvestigationInsightsRail';
 import { ComplaintsPanel } from './components/ComplaintsPanel';
 import { FraudTimelinePanel } from './components/FraudTimelinePanel';
 import { InvestigationSummaryPanel } from './components/InvestigationSummaryPanel';
 import { FilterSlidebar } from './components/FilterSlidebar';
 import { ComplaintIntakeModal } from './components/ComplaintIntakeModal';
 import { downloadInvestigationReport } from './utils/reportGenerator';
+import { 
+  NETWORK_9_NODES, 
+  NETWORK_9_EDGES, 
+  NetworkNode, 
+  NetworkEdge 
+} from './mock/network9Data';
 import { 
   SYNTHETIC_NODES, 
   SYNTHETIC_EDGES, 
@@ -52,6 +60,13 @@ function DashboardContent() {
   const [edges, setEdges] = useState<GraphEdgeData[]>(SYNTHETIC_EDGES);
   const [timeline] = useState<TimelineEvent[]>(SYNTHETIC_TIMELINE);
 
+  // 9-Node Government-Grade Network & Timeline Scrubber State
+  const [networkNodes] = useState<NetworkNode[]>(NETWORK_9_NODES);
+  const [networkEdges] = useState<NetworkEdge[]>(NETWORK_9_EDGES);
+  const [selectedNetworkNode, setSelectedNetworkNode] = useState<NetworkNode | null>(null);
+  const [timelineIndex, setTimelineIndex] = useState<number>(4);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
   // Complaints state with LocalStorage persistence
   const [complaints, setComplaints] = useState<ComplaintRecord[]>(() => {
     try {
@@ -64,23 +79,42 @@ function DashboardContent() {
   });
 
   // Selection & Freezing state
-  const [selectedEntity, setSelectedEntity] = useState<GraphNodeData | null>(null);
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintRecord | null>(null);
   const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
   const [frozenNodeIds, setFrozenNodeIds] = useState<Set<string>>(new Set());
-  const [highlightedRingActive, setHighlightedRingActive] = useState(false);
-
-  // Graph Image Exporter Ref for Reports
-  const graphExportRef = useRef<(() => string | null) | null>(null);
 
   // Download Comprehensive Forensic Investigation Report (Descriptive Analysis + Graph)
   const handleDownloadReport = () => {
-    const graphImageBase64 = graphExportRef.current ? graphExportRef.current() : null;
+    const reportNodes: GraphNodeData[] = networkNodes.map((n) => ({
+      id: n.id,
+      label: n.name,
+      type: n.type === 'upi' || n.type === 'mule' ? 'account' : n.type === 'device' ? 'device' : 'merchant',
+      role: n.role as any,
+      riskScore: n.riskScore,
+      status: n.status,
+      upiId: n.handle.includes('@') ? n.handle : undefined,
+      deviceId: n.type === 'device' ? n.handle : undefined,
+      bankName: n.bank,
+      disputeAmount: n.disputeAmount,
+    }));
+
+    const reportEdges: GraphEdgeData[] = networkEdges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      amount: e.amount || 0,
+      timestamp: `2026-10-15 ${e.timestamp}`,
+      utr: `UTR-2026-${e.id.toUpperCase()}`,
+      channel: e.type === 'device_link' ? 'DEVICE_BIND' : 'UPI_P2P',
+      isSuspicious: e.type === 'transaction' && (e.amount || 0) > 5000,
+      ruleTriggered: e.ruleTriggered,
+    }));
+
     downloadInvestigationReport({
       caseId: 'INV-2026-084',
-      graphImageBase64,
-      nodes,
-      edges,
+      graphImageBase64: null,
+      nodes: reportNodes,
+      edges: reportEdges,
       complaints,
       timeline,
       analystName: 'Bharath K (Member 3)',
@@ -93,7 +127,6 @@ function DashboardContent() {
       setActiveDrawer(null);
     } else {
       setActiveDrawer(drawer);
-      setSelectedEntity(null);
     }
   };
 
@@ -112,61 +145,29 @@ function DashboardContent() {
     });
   };
 
-  // Complaint selection -> Cross-highlight in graph
+  // Complaint selection -> Cross-highlight in network
   const handleSelectComplaint = (cmp: ComplaintRecord | null) => {
     setSelectedComplaint(cmp);
     setSelectedTimelineEvent(null);
     if (cmp) {
-      const targetNode = nodes.find((n) => n.id === cmp.relatedAccountId);
-      if (targetNode) {
-        setSelectedEntity(targetNode);
+      const target = networkNodes.find((n) => n.id === cmp.relatedAccountId || n.handle === cmp.relatedAccountUpi);
+      if (target) {
+        setSelectedNetworkNode(target);
       }
     }
   };
 
-  // Timeline Event selection -> Cross-highlight in graph
+  // Timeline Event selection -> Cross-highlight in network
   const handleSelectTimelineEvent = (evt: TimelineEvent | null) => {
     setSelectedTimelineEvent(evt);
     setSelectedComplaint(null);
     if (evt) {
-      const targetNode = nodes.find((n) => n.id === evt.sender) || nodes.find((n) => n.id === evt.receiver);
-      if (targetNode) {
-        setSelectedEntity(targetNode);
+      const target = networkNodes.find((n) => n.id === evt.sender || n.handle === evt.senderUpi);
+      if (target) {
+        setSelectedNetworkNode(target);
       }
     }
   };
-
-  // Node selection from Graph -> Handled by in-canvas Mirror Glass Box
-  const handleSelectEntityFromGraph = (entity: GraphNodeData | null) => {
-    setSelectedEntity(entity);
-  };
-
-  // Compute Cross-highlighted elements for GraphExplorer
-  const highlightedNodeIds = useMemo(() => {
-    if (selectedComplaint) {
-      return [selectedComplaint.relatedAccountId];
-    }
-    if (selectedTimelineEvent) {
-      return [selectedTimelineEvent.sender, selectedTimelineEvent.receiver];
-    }
-    return [];
-  }, [selectedComplaint, selectedTimelineEvent]);
-
-  const highlightedEdgeId = useMemo(() => {
-    if (selectedTimelineEvent?.edgeId) {
-      return selectedTimelineEvent.edgeId;
-    }
-    if (selectedComplaint) {
-      const matched = edges.find(
-        (e) =>
-          (e.utr && selectedComplaint.relatedTxnUtr && e.utr === selectedComplaint.relatedTxnUtr) ||
-          e.source === selectedComplaint.relatedAccountId ||
-          e.target === selectedComplaint.relatedAccountId
-      );
-      return matched?.id || null;
-    }
-    return null;
-  }, [selectedComplaint, selectedTimelineEvent, edges]);
 
   // Counterfactual Freeze
   const handleToggleFreeze = (nodeId: string) => {
@@ -185,7 +186,6 @@ function DashboardContent() {
   const handleAddComplaint = (newComplaintNode: GraphNodeData, newEdge: GraphEdgeData) => {
     setNodes((prev) => [newComplaintNode, ...prev]);
     setEdges((prev) => [newEdge, ...prev]);
-    setSelectedEntity(newComplaintNode);
   };
 
   const resetFilters = () => {
@@ -200,7 +200,7 @@ function DashboardContent() {
   return (
     <div
       className={`h-screen w-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden ${
-        theme === 'dark' ? 'bg-[#060E0B] text-slate-100' : 'bg-[#F4F7F5] text-slate-800'
+        theme === 'dark' ? 'bg-[#060E0B] text-slate-100' : 'bg-[#FBF9F4] text-slate-800'
       }`}
     >
       {/* 1. Top Header Bar (Brand Logo, Breadcrumbs, Demo Workspace, Controls) */}
@@ -212,8 +212,8 @@ function DashboardContent() {
         onDownloadReport={handleDownloadReport}
       />
 
-      {/* 2. Main Investigation Workspace (Left Action Rail + Center Graph + Slide-in Drawers) */}
-      <div className="flex-1 flex min-h-0 relative overflow-hidden">
+      {/* 2. Main Investigation Workspace */}
+      <div className="flex-1 flex min-h-0 relative overflow-hidden bg-[#FBF9F4]">
         {/* Left Action Rail (Icon-Only buttons with hover text tooltips) */}
         <Sidebar
           activeDrawer={activeDrawer}
@@ -221,45 +221,57 @@ function DashboardContent() {
           complaintCount={complaints.length}
         />
 
-        {/* Center / Full-Width Graph Container Card */}
-        <main className="flex-1 flex flex-col min-w-0 p-3 h-full overflow-hidden">
-          <GraphExplorer
-            nodes={nodes}
-            edges={edges}
-            selectedEntity={selectedEntity}
-            onSelectEntity={handleSelectEntityFromGraph}
-            frozenNodeIds={frozenNodeIds}
-            highlightedRingActive={highlightedRingActive}
-            setHighlightedRingActive={setHighlightedRingActive}
-            highlightedNodeIds={highlightedNodeIds}
-            highlightedEdgeId={highlightedEdgeId}
-            searchFilter={searchQuery}
-            setSearchFilter={setSearchQuery}
-            minRiskScore={minRiskScore}
-            minAmount={minAmount}
-            filterTypes={filterTypes}
-            layoutName={layoutName}
-            onOpenFilters={() => setIsFilterSlidebarOpen(true)}
-            timeRange={timeRange}
-            setTimeRange={setTimeRange}
-            onToggleFreeze={handleToggleFreeze}
-            onRegisterExport={(fn) => { graphExportRef.current = fn; }}
-            onDownloadReport={handleDownloadReport}
-          />
-        </main>
+        {/* Investigation Workspace Layout: 75%–85% Graph & Timeline on Left, 20%–25% Investigation Insights Rail on Right */}
+        <div className="flex-1 flex min-w-0 h-full overflow-hidden">
+          {/* Left Area (78% width): Network Graph (upper) + Transaction Timeline (flush beneath) */}
+          <section className="flex-1 min-w-0 h-full flex flex-col p-3 pr-1.5 overflow-hidden">
+            {/* Upper: Interactive Network Graph Canvas */}
+            <div className="flex-1 min-h-0 relative rounded-t-2xl overflow-hidden border border-[#E8E4D8] border-b-0 shadow-2xs">
+              <NetworkGraphCanvas
+                nodes={networkNodes}
+                edges={networkEdges}
+                selectedNodeId={selectedNetworkNode?.id || null}
+                onSelectNode={setSelectedNetworkNode}
+                timelineIndex={timelineIndex}
+                frozenNodeIds={frozenNodeIds}
+              />
+            </div>
 
-        {/* 3. Slide-In Interactive Panel Drawer (Complaints, Timeline, Past Record) */}
+            {/* Lower: Transaction Timeline Bar (Positioned flush beneath the graph canvas in a dedicated card) */}
+            <div className="shrink-0 rounded-b-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
+              <TransactionTimelineBar
+                timelineIndex={timelineIndex}
+                setTimelineIndex={setTimelineIndex}
+                isPlaying={isPlaying}
+                setIsPlaying={setIsPlaying}
+              />
+            </div>
+          </section>
+
+          {/* Right Rail (22% width, min 300px, max 380px): INVESTIGATION INSIGHTS */}
+          <div className="w-[340px] shrink-0 h-full p-3 pl-1.5 overflow-hidden">
+            <div className="h-full rounded-2xl overflow-hidden border border-[#E8E4D8] shadow-2xs">
+              <InvestigationInsightsRail
+                selectedNode={selectedNetworkNode}
+                onClearSelection={() => setSelectedNetworkNode(null)}
+                edges={networkEdges}
+                nodes={networkNodes}
+                frozenNodeIds={frozenNodeIds}
+                onToggleFreeze={handleToggleFreeze}
+                onDownloadReport={handleDownloadReport}
+                onOpenComplaints={() => handleToggleDrawer('complaints')}
+                complaintCount={complaints.length}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Slide-In Modal Drawer when Complaints or Past Record are clicked from Sidebar */}
         {activeDrawer && (
-          <div
-            className={`w-[420px] max-w-[90vw] shrink-0 h-full border-l flex flex-col shadow-2xl z-30 transition-all duration-300 animate-in slide-in-from-right ${
-              theme === 'dark'
-                ? 'bg-[#091612] border-[#142921]'
-                : 'bg-white border-slate-200'
-            }`}
-          >
+          <div className="absolute right-0 top-0 bottom-0 w-[420px] max-w-[90vw] bg-white border-l border-[#E2DFD7] shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-200">
             {/* Drawer Close Bar */}
-            <div className="px-4 py-3 border-b border-inherit flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="px-5 py-3.5 border-b border-[#E2DFD7] flex items-center justify-between bg-slate-50">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 {activeDrawer === 'complaints'
                   ? 'Complaints & Dispute Reports'
                   : activeDrawer === 'timeline'
@@ -268,13 +280,13 @@ function DashboardContent() {
               </span>
               <button
                 onClick={() => setActiveDrawer(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors btn-press"
+                className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Drawer Content */}
+            {/* Drawer Body */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {activeDrawer === 'complaints' && (
                 <ComplaintsPanel
@@ -285,7 +297,6 @@ function DashboardContent() {
                   onClose={() => setActiveDrawer(null)}
                 />
               )}
-
               {activeDrawer === 'timeline' && (
                 <FraudTimelinePanel
                   timeline={timeline}
@@ -294,7 +305,6 @@ function DashboardContent() {
                   onClose={() => setActiveDrawer(null)}
                 />
               )}
-
               {activeDrawer === 'summary' && (
                 <InvestigationSummaryPanel
                   nodes={nodes}
@@ -346,3 +356,4 @@ export function App() {
 }
 
 export default App;
+
