@@ -8,6 +8,14 @@ import {
   Type, 
   AlertTriangle,
   SlidersHorizontal,
+  X,
+  ArrowRight,
+  ArrowLeft,
+  Lock,
+  Unlock,
+  Radio,
+  ExternalLink,
+  ShieldAlert
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { GraphNodeData, GraphEdgeData } from '../types';
@@ -31,6 +39,7 @@ interface GraphExplorerProps {
   onOpenFilters?: () => void;
   timeRange?: string;
   setTimeRange?: (tr: string) => void;
+  onToggleFreeze?: (nodeId: string) => void;
 }
 
 export const GraphExplorer: React.FC<GraphExplorerProps> = ({
@@ -52,12 +61,13 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   onOpenFilters,
   timeRange = 'Last 24 hours',
   setTimeRange,
+  onToggleFreeze,
 }) => {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('ALL');
-  // Labels are hidden by default to keep the graph ultra-clean; hovering over any node/edge dynamically shows its label on canvas
+  // Labels are hidden by default; hovering or selecting reveals them dynamically
   const [showLabels, setShowLabels] = useState(false);
 
   // Filter visible nodes
@@ -87,6 +97,25 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       return visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target);
     });
   }, [edges, minAmount, visibleNodeIds]);
+
+  // Compute connections for the currently selected node
+  const activeConnections = useMemo(() => {
+    if (!selectedEntity) return [];
+    const directEdges = edges.filter(
+      (e) => e.source === selectedEntity.id || e.target === selectedEntity.id
+    );
+
+    return directEdges.map((e) => {
+      const isOutgoing = e.source === selectedEntity.id;
+      const otherNodeId = isOutgoing ? e.target : e.source;
+      const otherNode = nodes.find((n) => n.id === otherNodeId);
+      return {
+        edge: e,
+        isOutgoing,
+        otherNode,
+      };
+    });
+  }, [selectedEntity, edges, nodes]);
 
   // Color & styling helper matching the reference palette
   const getNodeColor = (node: GraphNodeData, isFrozen: boolean): string => {
@@ -134,7 +163,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
 
     const isDark = theme === 'dark';
 
-    // Preset cluster coordinates to guarantee the exact two-cluster split from reference
+    // Preset cluster coordinates
     const getInitialPosition = (id: string) => {
       const positions: Record<string, { x: number; y: number }> = {
         // Left Cluster: Mule Ring & Device Collusion
@@ -278,16 +307,64 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'z-index': 9999,
           } as any,
         },
-        // Selection State
+        // Selected Active Hub Node (When clicked)
         {
-          selector: 'node:selected',
+          selector: '.active-hub-node',
           style: {
             'label': 'data(label)',
-            'border-width': 3.5,
-            'border-color': '#06B6D4',
+            'color': '#FFFFFF',
+            'font-size': '11px',
+            'font-weight': 700,
+            'text-valign': 'bottom',
+            'text-margin-y': 9,
+            'text-outline-width': 2.5,
+            'text-outline-color': '#060E0B',
+            'border-width': 4,
+            'border-color': '#FFFFFF',
             'underlay-color': '#06B6D4',
+            'underlay-padding': 12,
+            'underlay-opacity': 0.55,
+            'z-index': 9999,
+          } as any,
+        },
+        // Connected Neighbor Nodes of Selected Hub
+        {
+          selector: '.active-neighbor-node',
+          style: {
+            'label': 'data(label)',
+            'color': '#FFFFFF',
+            'font-size': '10px',
+            'font-weight': 600,
+            'text-valign': 'bottom',
+            'text-margin-y': 8,
+            'text-outline-width': 2,
+            'text-outline-color': '#060E0B',
+            'border-width': 3.5,
+            'border-color': '#38BDF8',
+            'underlay-color': '#38BDF8',
             'underlay-padding': 8,
             'underlay-opacity': 0.4,
+            'z-index': 9995,
+          } as any,
+        },
+        // Active Connecting Edges with Glowing Arrows & Direction
+        {
+          selector: '.active-connecting-edge',
+          style: {
+            'label': 'data(label)',
+            'color': '#FFFFFF',
+            'font-size': '10px',
+            'font-weight': 700,
+            'text-outline-width': 2,
+            'text-outline-color': '#060E0B',
+            'width': 4.5,
+            'line-color': '#06B6D4',
+            'target-arrow-color': '#06B6D4',
+            'arrow-scale': 1.4,
+            'underlay-color': '#06B6D4',
+            'underlay-padding': 6,
+            'underlay-opacity': 0.5,
+            'z-index': 9990,
           } as any,
         },
         {
@@ -299,7 +376,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'border-style': 'dashed',
           },
         },
-        // Base Edge Style: Clean, no text unless hovered
+        // Base Edge Style: Clean, no text unless hovered or connected
         {
           selector: 'edge',
           style: {
@@ -391,6 +468,12 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'opacity': 0.15,
           },
         },
+        {
+          selector: '.dimmed-unconnected',
+          style: {
+            'opacity': 0.12,
+          },
+        },
       ],
       layout: {
         name: 'preset',
@@ -399,7 +482,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       },
     });
 
-    // Tap handlers
+    // Tap handlers: Selecting a node triggers connection highlighting & opens mirror box
     cy.on('tap', 'node', (evt: EventObject) => {
       const nodeData = nodes.find((n) => n.id === evt.target.id());
       if (nodeData) {
@@ -432,23 +515,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       evt.target.removeClass('hovered-edge');
     });
 
-    // Subtle ambient breathing animation for primary mule hub to keep canvas alive
-    const muleNode = cy.getElementById('ACC_PRIMARY_MULE');
-    let isPulse = false;
-    const pulseInterval = setInterval(() => {
-      if (!cyRef.current) return;
-      isPulse = !isPulse;
-      if (muleNode && muleNode.length > 0 && !muleNode.hasClass('hovered-node')) {
-        muleNode.animate({
-          style: {
-            'underlay-opacity': isPulse ? 0.35 : 0.05,
-            'underlay-padding': isPulse ? 8 : 2,
-          },
-          duration: 900,
-        });
-      }
-    }, 1100);
-
     cyRef.current = cy;
 
     // Handle container resize cleanly
@@ -460,7 +526,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     resizeObserver.observe(containerRef.current);
 
     return () => {
-      clearInterval(pulseInterval);
       resizeObserver.disconnect();
       cy.destroy();
     };
@@ -471,6 +536,62 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     theme, 
     showLabels
   ]);
+
+  // Connection Tracing Animation on Node Click
+  useEffect(() => {
+    if (!cyRef.current) return;
+    const cy = cyRef.current;
+
+    // Clear previous connection states
+    cy.elements().removeClass(
+      'active-hub-node active-neighbor-node active-connecting-edge dimmed-unconnected'
+    );
+
+    if (selectedEntity) {
+      const selectedEle = cy.getElementById(selectedEntity.id);
+      if (selectedEle && selectedEle.length > 0) {
+        const incidentEdges = selectedEle.connectedEdges();
+        const neighborNodes = incidentEdges.connectedNodes().not(selectedEle);
+
+        // Dim everything not in direct connection
+        cy.elements().addClass('dimmed-unconnected');
+
+        // Highlight selected node, incident edges, and neighbors
+        selectedEle.removeClass('dimmed-unconnected').addClass('active-hub-node');
+        neighborNodes.removeClass('dimmed-unconnected').addClass('active-neighbor-node');
+        incidentEdges.removeClass('dimmed-unconnected').addClass('active-connecting-edge');
+
+        // Center on the connected subgraph gently
+        const connectedSubgraph = selectedEle.union(incidentEdges).union(neighborNodes);
+        cy.animate({
+          fit: {
+            eles: connectedSubgraph,
+            padding: 80,
+          },
+          duration: 350,
+        });
+
+        // Pulsing connection animation loop
+        let pulseStep = 0;
+        const animInterval = setInterval(() => {
+          if (!cyRef.current) return;
+          pulseStep = (pulseStep + 1) % 2;
+          incidentEdges.animate({
+            style: {
+              'width': pulseStep === 1 ? 5.2 : 3.6,
+              'underlay-opacity': pulseStep === 1 ? 0.6 : 0.25,
+              'underlay-padding': pulseStep === 1 ? 8 : 4,
+            },
+            duration: 400,
+          });
+        }, 450);
+
+        return () => {
+          clearInterval(animInterval);
+        };
+      }
+    }
+  }, [selectedEntity]);
 
   // Spotlight ring effect
   useEffect(() => {
@@ -533,11 +654,11 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       }
     } else {
       cy.elements().removeClass('cross-highlighted-node cross-highlighted-edge');
-      if (!highlightedRingActive) {
+      if (!highlightedRingActive && !selectedEntity) {
         cy.elements().removeClass('dimmed');
       }
     }
-  }, [highlightedNodeIds, highlightedEdgeId, highlightedRingActive]);
+  }, [highlightedNodeIds, highlightedEdgeId, highlightedRingActive, selectedEntity]);
 
   const handleZoomIn = () => cyRef.current?.zoom(cyRef.current.zoom() * 1.25);
   const handleZoomOut = () => cyRef.current?.zoom(cyRef.current.zoom() * 0.8);
@@ -653,6 +774,199 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
 
         {/* Cytoscape Container */}
         <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+
+        {/* MIRROR EFFECT INFO BOX (Appears when clicking a node, showing direct animated connections) */}
+        {selectedEntity && (
+          <div
+            className={`absolute top-4 right-4 z-30 w-80 sm:w-96 max-h-[calc(100%-2rem)] flex flex-col rounded-2xl border backdrop-blur-2xl transition-all duration-300 animate-in fade-in zoom-in-95 overflow-hidden select-text ${
+              theme === 'dark'
+                ? 'bg-gradient-to-br from-[#122A21]/92 via-[#0A1A14]/95 to-[#060F0C]/98 border-white/20 shadow-[0_16px_50px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.18)] text-slate-100'
+                : 'bg-gradient-to-br from-white/95 via-slate-50/95 to-slate-100/98 border-slate-300 shadow-2xl text-slate-800'
+            }`}
+          >
+            {/* Mirror Top Specular Reflection Highlight Line */}
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/70 to-transparent pointer-events-none" />
+            
+            {/* Mirror Sheen Diagonal Reflection Layer */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 via-transparent to-white/10 pointer-events-none rounded-2xl" />
+
+            {/* Mirror Card Header */}
+            <div className="p-4 border-b border-white/10 relative flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                      selectedEntity.riskScore > 75
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        : selectedEntity.riskScore > 40
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    }`}
+                  >
+                    {selectedEntity.role?.replace(/_/g, ' ') || selectedEntity.type}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Risk: <strong className="text-white">{selectedEntity.riskScore}/100</strong>
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm tracking-tight truncate text-white">
+                  {selectedEntity.label}
+                </h3>
+                <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                  {selectedEntity.subText || selectedEntity.bankName || 'Verified entity identifier'}
+                </p>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => onSelectEntity(null)}
+                title="Close inspector"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors btn-press shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Body: Metadata + Animated Connections */}
+            <div className="p-4 space-y-4 overflow-y-auto flex-1 text-xs">
+              {/* Key Details Grid */}
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                {selectedEntity.upiId && (
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                    <span className="text-slate-400 text-[10px] block">UPI VPA</span>
+                    <span className="font-mono text-slate-200 truncate block font-medium">
+                      {selectedEntity.upiId}
+                    </span>
+                  </div>
+                )}
+                {selectedEntity.bankName && (
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                    <span className="text-slate-400 text-[10px] block">Bank</span>
+                    <span className="text-slate-200 truncate block font-medium">
+                      {selectedEntity.bankName}
+                    </span>
+                  </div>
+                )}
+                {selectedEntity.deviceId && (
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/5 col-span-2">
+                    <span className="text-slate-400 text-[10px] block">Bound Hardware ID</span>
+                    <span className="font-mono text-slate-200 truncate block font-medium">
+                      {selectedEntity.deviceId}
+                    </span>
+                  </div>
+                )}
+                {selectedEntity.disputeAmount && (
+                  <div className="p-2 rounded-xl bg-rose-950/40 border border-rose-900/60 col-span-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-rose-400 text-[10px] block">Disputed Fraud Amount</span>
+                      <span className="font-mono text-rose-200 font-bold text-sm">
+                        ₹{selectedEntity.disputeAmount.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <ShieldAlert className="w-5 h-5 text-rose-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* ANIMATED CONNECTIONS SECTION: Tells which node connects to which node */}
+              <div className="space-y-2 pt-1 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    <span className="font-bold text-[11px] uppercase tracking-wider text-slate-300">
+                      Active Linkages ({activeConnections.length})
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-cyan-300/80 font-mono">Animated Flow</span>
+                </div>
+
+                <div className="space-y-2">
+                  {activeConnections.map(({ edge, isOutgoing, otherNode }, idx) => (
+                    <div
+                      key={edge.id || idx}
+                      onClick={() => otherNode && onSelectEntity(otherNode)}
+                      className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all cursor-pointer group shadow-xs"
+                      title="Click to jump to this connected node"
+                    >
+                      {/* Connection Direction & Amount Badge */}
+                      <div className="flex items-center justify-between text-[10px] mb-1.5">
+                        <span
+                          className={`font-bold px-1.5 py-0.2 rounded uppercase ${
+                            isOutgoing
+                              ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800'
+                              : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
+                          }`}
+                        >
+                          {isOutgoing ? 'Outgoing Transfer ──►' : '◄── Incoming Inflow'}
+                        </span>
+                        <span className="font-mono font-bold text-slate-200">
+                          {edge.amount > 0 ? `₹${edge.amount.toLocaleString('en-IN')}` : edge.channel}
+                        </span>
+                      </div>
+
+                      {/* Node A -> Node B Visual Flow Line with Pulse Animation */}
+                      <div className="flex items-center justify-between gap-1 text-[11px] font-mono">
+                        <span className="text-slate-400 truncate max-w-[110px]">
+                          {isOutgoing ? selectedEntity.label : otherNode?.label || 'Source'}
+                        </span>
+                        
+                        {/* Animated Connecting Arrow */}
+                        <div className="flex items-center gap-1 text-cyan-400 shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                          <div className="w-6 h-px bg-cyan-400/80 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-white translate-x-[-100%] animate-[shimmer_1.5s_infinite]" />
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5 animate-pulse text-cyan-300" />
+                        </div>
+
+                        <span className="text-white font-semibold truncate max-w-[120px] group-hover:text-cyan-300 transition-colors">
+                          {isOutgoing ? otherNode?.label || 'Target' : selectedEntity.label}
+                        </span>
+                      </div>
+
+                      {edge.ruleTriggered && (
+                        <p className="text-[9px] text-amber-400/90 mt-1.5 truncate">
+                          ⚡ Signal: {edge.ruleTriggered}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Counterfactual Freeze Simulation Action */}
+              {onToggleFreeze && (
+                <div className="pt-2 border-t border-white/10">
+                  <button
+                    onClick={() => onToggleFreeze(selectedEntity.id)}
+                    className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs transition-all btn-press shadow-xs ${
+                      frozenNodeIds.has(selectedEntity.id)
+                        ? 'bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold'
+                        : 'bg-rose-600 hover:bg-rose-500 text-white'
+                    }`}
+                  >
+                    {frozenNodeIds.has(selectedEntity.id) ? (
+                      <>
+                        <Unlock className="w-3.5 h-3.5" />
+                        <span>Unfreeze Account Node</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Simulate Immediate Freeze</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-[10px] text-slate-400 text-center mt-1">
+                    {frozenNodeIds.has(selectedEntity.id)
+                      ? 'Account flow severed in what-if simulation'
+                      : 'Test ring disruption impact by severing transactions'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Floating Bottom Toolbar */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-lg transition-all bg-[#091713]/90 border-[#18362B]">

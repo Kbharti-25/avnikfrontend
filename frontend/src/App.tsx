@@ -6,13 +6,11 @@ import { GraphExplorer } from './components/GraphExplorer';
 import { ComplaintsPanel } from './components/ComplaintsPanel';
 import { FraudTimelinePanel } from './components/FraudTimelinePanel';
 import { InvestigationSummaryPanel } from './components/InvestigationSummaryPanel';
-import { EntityInspector } from './components/EntityInspector';
 import { FilterSlidebar } from './components/FilterSlidebar';
 import { ComplaintIntakeModal } from './components/ComplaintIntakeModal';
 import { 
   SYNTHETIC_NODES, 
   SYNTHETIC_EDGES, 
-  SYNTHETIC_ALERTS, 
   SYNTHETIC_TIMELINE, 
   DEMO_COMPLAINTS 
 } from './mock/syntheticData';
@@ -120,12 +118,9 @@ function DashboardContent() {
     }
   };
 
-  // Node selection from Graph -> Opens entity inspector
+  // Node selection from Graph -> Handled by in-canvas Mirror Glass Box
   const handleSelectEntityFromGraph = (entity: GraphNodeData | null) => {
     setSelectedEntity(entity);
-    if (entity) {
-      setActiveDrawer(null);
-    }
   };
 
   // Compute Cross-highlighted elements for GraphExplorer
@@ -200,7 +195,7 @@ function DashboardContent() {
 
       {/* 2. Main Investigation Workspace (Left Action Rail + Center Graph + Slide-in Drawers) */}
       <div className="flex-1 flex min-h-0 relative overflow-hidden">
-        {/* Left Action Rail matching Screenshot (Network active icon, Complaints, Timeline, Past Record) */}
+        {/* Left Action Rail (Icon-Only buttons with hover text tooltips) */}
         <Sidebar
           activeDrawer={activeDrawer}
           onToggleDrawer={handleToggleDrawer}
@@ -228,11 +223,12 @@ function DashboardContent() {
             onOpenFilters={() => setIsFilterSlidebarOpen(true)}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
+            onToggleFreeze={handleToggleFreeze}
           />
         </main>
 
-        {/* 3. Slide-In Interactive Panel Drawer (Complaints, Timeline, Past Record, Entity Inspector) */}
-        {(activeDrawer || selectedEntity) && (
+        {/* 3. Slide-In Interactive Panel Drawer (Complaints, Timeline, Past Record) */}
+        {activeDrawer && (
           <div
             className={`w-[420px] max-w-[90vw] shrink-0 h-full border-l flex flex-col shadow-2xl z-30 transition-all duration-300 animate-in slide-in-from-right ${
               theme === 'dark'
@@ -244,18 +240,13 @@ function DashboardContent() {
             <div className="px-4 py-3 border-b border-inherit flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 {activeDrawer === 'complaints'
-                  ? 'Complaints & Dispute Records'
+                  ? 'Complaints & Dispute Reports'
                   : activeDrawer === 'timeline'
                   ? 'Fraud Timeline Sequence'
-                  : activeDrawer === 'summary'
-                  ? 'Investigation Summary & Audit'
-                  : 'Entity Details & Inspection'}
+                  : 'Investigation Summary & Audit'}
               </span>
               <button
-                onClick={() => {
-                  setActiveDrawer(null);
-                  setSelectedEntity(null);
-                }}
+                onClick={() => setActiveDrawer(null)}
                 className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors btn-press"
               >
                 <X className="w-4 h-4" />
@@ -289,17 +280,6 @@ function DashboardContent() {
                   edges={edges}
                   complaints={complaints}
                   onClose={() => setActiveDrawer(null)}
-                />
-              )}
-
-              {selectedEntity && !activeDrawer && (
-                <EntityInspector
-                  entity={selectedEntity}
-                  onClose={() => setSelectedEntity(null)}
-                  edges={edges}
-                  nodes={nodes}
-                  isFrozen={frozenNodeIds.has(selectedEntity.id)}
-                  onToggleFreeze={handleToggleFreeze}
                 />
               )}
             </div>
