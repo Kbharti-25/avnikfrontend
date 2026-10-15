@@ -29,7 +29,9 @@ interface InvestigationInsightsRailProps {
   onOpenComplaints: () => void;
   complaintCount?: number;
   onShowGraph?: () => void;
+  onRunAnalysis?: () => void;
   isGraphVisible?: boolean;
+  caseId?: string;
 }
 
 export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps> = ({
@@ -43,12 +45,16 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
   onOpenComplaints,
   complaintCount = 4,
   onShowGraph,
-  isGraphVisible = true,
+  onRunAnalysis,
+  isGraphVisible = false,
+  caseId = 'NCRP-2026-0841',
 }) => {
   // Connected edges for the selected node
   const connectedEdges = selectedNode
     ? edges.filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
     : [];
+
+  const handleTriggerAnalysis = onRunAnalysis || onShowGraph;
 
   return (
     <aside className="w-full h-full bg-[#FFFFFF] border-r md:border-r-0 border-[#E8E4D8] flex flex-col justify-between overflow-hidden select-none">
@@ -58,19 +64,19 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800 block truncate">
             INVESTIGATION INSIGHTS
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">Case #INV-2026-084</span>
+          <span className="text-[10px] text-slate-400 font-mono">Case #{caseId}</span>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Interactive Button to Reveal / Expand the Graph */}
-          {onShowGraph && (
+          {/* Analysis Button: Graph only appears after clicking on Analysis */}
+          {handleTriggerAnalysis && (
             <button
-              onClick={onShowGraph}
-              title={isGraphVisible ? "Expand & Focus Graph" : "Make Graph Appear"}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#007065] hover:bg-[#005a52] active:scale-95 text-white flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              onClick={handleTriggerAnalysis}
+              title={isGraphVisible ? "Focus on Network Graph Analysis" : "Run Analysis to generate Graph"}
+              className="px-3 py-1 rounded-lg text-[11px] font-bold bg-[#007065] hover:bg-[#005a52] active:scale-95 text-white flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
-              <Network className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">{isGraphVisible ? 'View Graph' : 'Show Graph'}</span>
+              <Activity className="w-3.5 h-3.5" />
+              <span>Analysis</span>
             </button>
           )}
 
@@ -82,17 +88,17 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
 
       {/* 2. Scrollable Body Content (Text reflows and adjusts evenly across widths) */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-        {/* Interactive Launch Graph Banner Card */}
-        {onShowGraph && (
-          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 shadow-2xs space-y-2">
+        {/* Interactive Launch Graph / Analysis Banner Card */}
+        {handleTriggerAnalysis && (
+          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 shadow-2xs space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-[#007065] text-white flex items-center justify-center shadow-xs">
-                  <Network className="w-4 h-4 stroke-[2.2]" />
+                  <Activity className="w-4 h-4 stroke-[2.2]" />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-slate-900 leading-tight">
-                    Transaction Network Graph
+                    Network Crime Analysis
                   </h4>
                   <span className="text-[10px] text-slate-500 font-mono">
                     9 entities · 9 relationships
@@ -103,15 +109,15 @@ export const InvestigationInsightsRail: React.FC<InvestigationInsightsRailProps>
             </div>
 
             <p className="text-[11px] text-slate-600 leading-relaxed text-balance">
-              Explore the 1st-degree mule accounts, shared hardware token, and collect request flows on an interactive canvas.
+              Click below to generate and display the interactive transaction network graph with particle flows and timeline controls.
             </p>
 
             <button
-              onClick={onShowGraph}
-              className="w-full py-2 px-3 rounded-lg bg-[#007065] hover:bg-[#005a52] active:scale-[0.98] text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+              onClick={handleTriggerAnalysis}
+              className="w-full py-2.5 px-3 rounded-lg bg-[#007065] hover:bg-[#005a52] active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
             >
-              <span>{isGraphVisible ? 'Focus & Expand Network Graph' : 'Make Graph Appear'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <Activity className="w-3.5 h-3.5" />
+              <span>{isGraphVisible ? 'View / Focus Graph Analysis' : 'Run Analysis (Show Graph) →'}</span>
             </button>
           </div>
         )}

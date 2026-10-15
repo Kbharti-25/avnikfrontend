@@ -7,6 +7,7 @@ import { NetworkGraphCanvas } from './components/NetworkGraphCanvas';
 import { TransactionTimelineBar } from './components/TransactionTimelineBar';
 import { InvestigationInsightsRail } from './components/InvestigationInsightsRail';
 import { InvestigationIntakeScreen } from './components/InvestigationIntakeScreen';
+import { TraceConnectionsScreen } from './components/TraceConnectionsScreen';
 import { ComplaintsPanel } from './components/ComplaintsPanel';
 import { FraudTimelinePanel } from './components/FraudTimelinePanel';
 import { InvestigationSummaryPanel } from './components/InvestigationSummaryPanel';
@@ -32,7 +33,9 @@ import {
   ComplaintStatus, 
   TimelineEvent 
 } from './types';
-import { X, Network, SlidersHorizontal, ArrowLeftRight } from 'lucide-react';
+import { X, Network, SlidersHorizontal, ArrowLeftRight, Activity } from 'lucide-react';
+
+type WorkspaceStage = 'complaints' | 'trace' | 'investigation';
 
 function DashboardContent() {
   // Authentication State: Login Page is Stage 1 (The VERY FIRST SCREEN)
@@ -46,14 +49,15 @@ function DashboardContent() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setIsGraphLoaded(false);
+    setWorkspaceStage('complaints');
+    setIsGraphVisible(false);
   };
 
-  // Investigation Intake Page State vs Interactive Graph State
-  const [isGraphLoaded, setIsGraphLoaded] = useState(false);
-  const [activeCaseId, setActiveCaseId] = useState('CMP-2026-0001');
-  const [activeTxnId, setActiveTxnId] = useState('TXN-UPI-9001');
-  const [activeDevId, setActiveDevId] = useState('ANDR_09F2');
+  // Investigation Navigation Stages: complaints -> trace -> investigation
+  const [workspaceStage, setWorkspaceStage] = useState<WorkspaceStage>('complaints');
+  const [activeCaseId, setActiveCaseId] = useState('NCRP-2026-0841');
+  const [activeTxnId, setActiveTxnId] = useState('UPI260915084127');
+  const [activeDevId, setActiveDevId] = useState('DEV-7F3A9C');
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
 
   // Interactive Graph Visibility & Slide Bar Width Splitter State
@@ -190,22 +194,38 @@ function DashboardContent() {
     });
   };
 
-  // Load Graph from Intake Screen Handler
-  const handleLoadGraphFromIntake = (txnId: string, devId: string, cId: string) => {
+  // Step A: When user clicks "Investigate" on a complaint in Complaints & records
+  const handleStartTrace = (txnId: string, devId: string, cId: string) => {
+    setActiveTxnId(txnId);
+    setActiveDevId(devId);
+    setActiveCaseId(cId);
+    setWorkspaceStage('trace');
+  };
+
+  // Step B: When user clicks "Open investigation" on TraceConnectionsScreen
+  const handleOpenInvestigation = (txnId: string, devId: string, cId: string) => {
     setIsLoadingGraph(true);
     setActiveTxnId(txnId);
     setActiveDevId(devId);
     setActiveCaseId(cId);
-
     setTimeout(() => {
       setIsLoadingGraph(false);
-      setIsGraphLoaded(true);
-    }, 350);
+      setWorkspaceStage('investigation');
+      // Per user instruction: "when the main interface open graph should not be open automatically graph only appear after the we click on analysis"
+      setIsGraphVisible(false);
+    }, 200);
   };
 
-  // Return to Intake Screen Handler
-  const handleReturnToIntake = () => {
-    setIsGraphLoaded(false);
+  // Step C: When user clicks "Analysis" in the main interface
+  const handleRunAnalysis = () => {
+    setIsGraphVisible(true);
+    setGraphWidthPercent(68);
+  };
+
+  // Return to Complaints & records feed
+  const handleReturnToComplaints = () => {
+    setWorkspaceStage('complaints');
+    setIsGraphVisible(false);
   };
 
   // Toggle Left Nav Drawers
@@ -294,8 +314,8 @@ function DashboardContent() {
       {/* 1. Top Header Bar (Brand Logo, Breadcrumbs, Demo Workspace, Controls) */}
       <Header
         currentInvestigationId={activeCaseId}
-        isGraphLoaded={isGraphLoaded}
-        onReturnToIntake={handleReturnToIntake}
+        isGraphLoaded={workspaceStage === 'investigation'}
+        onReturnToIntake={handleReturnToComplaints}
         onOpenSearch={() => setIsFilterSlidebarOpen(true)}
         onOpenAlerts={() => handleToggleDrawer('summary')}
         alertCount={3}
@@ -312,16 +332,31 @@ function DashboardContent() {
           complaintCount={complaints.length}
         />
 
-        {/* Condition: Show Investigation Intake / Landing Screen OR Interactive Graph Workspace */}
-        {!isGraphLoaded ? (
+        {/* Stage 2: Complaints & Records case selection screen (Appears directly after Login) */}
+        {workspaceStage === 'complaints' && (
           <div className="flex-1 min-w-0 h-full overflow-hidden">
             <InvestigationIntakeScreen
-              onLoadGraph={handleLoadGraphFromIntake}
+              onLoadGraph={handleStartTrace}
               isLoading={isLoadingGraph}
             />
           </div>
-        ) : (
-          /* Interactive Investigation Workspace: Slide Bar Controls + Evenly Adjusting Left Text + Uniformly Expanding Graph */
+        )}
+
+        {/* Stage 3: Trace connections verification screen (Asks Transaction ID & Device ID) */}
+        {workspaceStage === 'trace' && (
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
+            <TraceConnectionsScreen
+              complaintId={activeCaseId}
+              defaultTransactionId={activeTxnId}
+              defaultDeviceId={activeDevId}
+              onBackToComplaints={handleReturnToComplaints}
+              onOpenInvestigation={handleOpenInvestigation}
+            />
+          </div>
+        )}
+
+        {/* Stage 4: Investigation Workspace (Graph is NOT open automatically, only opens on Analysis) */}
+        {workspaceStage === 'investigation' && (
           <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden animate-in fade-in duration-200">
             {/* 1. SLIDE BAR WORKSPACE CONTROL STRIP */}
             <div className="h-9 px-4 bg-white border-b border-[#E8E4D8] flex items-center justify-between text-xs text-slate-700 shrink-0 shadow-2xs select-none gap-2">
@@ -400,11 +435,11 @@ function DashboardContent() {
 
                 <button
                   onClick={() => setIsGraphVisible((prev) => !prev)}
-                  title={isGraphVisible ? 'Hide Network Graph' : 'Show Network Graph'}
+                  title={isGraphVisible ? 'Hide Network Graph' : 'Run Analysis (Show Graph)'}
                   className="px-2.5 py-1 rounded-lg bg-[#007065] hover:bg-[#005a52] text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
-                  <Network className="w-3.5 h-3.5" />
-                  <span>{isGraphVisible ? 'Hide Graph' : 'Show Graph'}</span>
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>{isGraphVisible ? 'Hide Graph' : 'Analysis (Show Graph)'}</span>
                 </button>
               </div>
             </div>
@@ -425,8 +460,10 @@ function DashboardContent() {
                       onDownloadReport={handleDownloadReport}
                       onOpenComplaints={() => handleToggleDrawer('complaints')}
                       complaintCount={complaints.length}
-                      onShowGraph={handleShowOrExpandGraph}
+                      onShowGraph={handleRunAnalysis}
+                      onRunAnalysis={handleRunAnalysis}
                       isGraphVisible={isGraphVisible}
+                      caseId={activeCaseId}
                     />
                   </div>
                 </div>
@@ -452,8 +489,10 @@ function DashboardContent() {
                             onDownloadReport={handleDownloadReport}
                             onOpenComplaints={() => handleToggleDrawer('complaints')}
                             complaintCount={complaints.length}
-                            onShowGraph={handleShowOrExpandGraph}
+                            onShowGraph={handleRunAnalysis}
+                            onRunAnalysis={handleRunAnalysis}
                             isGraphVisible={isGraphVisible}
+                            caseId={activeCaseId}
                           />
                         </div>
                       </div>
@@ -550,8 +589,10 @@ function DashboardContent() {
                             onDownloadReport={handleDownloadReport}
                             onOpenComplaints={() => handleToggleDrawer('complaints')}
                             complaintCount={complaints.length}
-                            onShowGraph={handleShowOrExpandGraph}
+                            onShowGraph={handleRunAnalysis}
+                            onRunAnalysis={handleRunAnalysis}
                             isGraphVisible={isGraphVisible}
+                            caseId={activeCaseId}
                           />
                         </div>
                       </div>
