@@ -8,7 +8,6 @@ import {
   Type, 
   AlertTriangle,
   SlidersHorizontal,
-  RotateCw
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { GraphNodeData, GraphEdgeData } from '../types';
@@ -69,7 +68,8 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('ALL');
-  const [showLabels, setShowLabels] = useState(true);
+  // Labels are hidden by default to keep the graph ultra-clean and modern; hover reveals them dynamically
+  const [showLabels, setShowLabels] = useState(false);
   const [hoverData, setHoverData] = useState<HoverTooltipData | null>(null);
 
   // Filter visible nodes
@@ -100,7 +100,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     });
   }, [edges, minAmount, visibleNodeIds]);
 
-  // Color & styling helper matching the exact screenshot palette
+  // Color & styling helper matching the reference palette
   const getNodeColor = (node: GraphNodeData, isFrozen: boolean): string => {
     if (isFrozen) return '#1E293B';
     if (node.id === 'ACC_VICTIM_1') return '#14B8A6'; // Teal circle (anand.verma@axis)
@@ -109,7 +109,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     if (node.type === 'device') return '#F97316'; // Orange diamond
     if (node.type === 'complaint') return '#E11D48'; // Pink-Red octagon (NCRP-2026-8812)
     // Fraud mules (rohit.sharma, karan.singh, deepak.gupta, amit.patel)
-    if (node.riskScore > 50 || node.role?.includes('mule')) return '#E11D48'; // Pink-Red
+    if (node.riskScore > 50 || node.role?.includes('mule')) return '#E11D48';
     return '#10B981';
   };
 
@@ -146,7 +146,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
 
     const isDark = theme === 'dark';
 
-    // Preset cluster coordinates to guarantee the exact two-cluster split from screenshot
+    // Preset cluster coordinates to guarantee the exact two-cluster split from reference
     const getInitialPosition = (id: string) => {
       const positions: Record<string, { x: number; y: number }> = {
         // Left Cluster: Mule Ring & Device Collusion
@@ -197,7 +197,6 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         const isMuleEdge = e.isSuspicious;
         const isSevered = frozenNodeIds.has(e.source) || frozenNodeIds.has(e.target);
         const isDevice = e.channel === 'DEVICE_BIND';
-        const isLegit = !e.isSuspicious;
         return {
           data: {
             id: e.id,
@@ -228,6 +227,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       container: containerRef.current,
       elements: cyElements,
       style: [
+        // Base Node Style: No label by default (clean look), animated hover transitions
         {
           selector: 'node',
           style: {
@@ -245,7 +245,10 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'height': 'data(nodeSize)',
             'text-outline-width': 2,
             'text-outline-color': '#060E0B',
-            'transition-property': 'background-color, line-color, target-arrow-color, opacity, border-color, underlay-color, underlay-opacity',
+            'underlay-color': 'data(color)',
+            'underlay-padding': 2,
+            'underlay-opacity': 0,
+            'transition-property': 'background-color, line-color, target-arrow-color, opacity, border-color, border-width, underlay-color, underlay-opacity, underlay-padding, width, height, font-size',
             'transition-duration': 0.25,
           },
         },
@@ -267,14 +270,36 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'shape': 'octagon',
           },
         },
+        // Interactive Hover State on Node: reveals label with animation and gentle halo
+        {
+          selector: '.hovered-node',
+          style: {
+            'label': 'data(label)',
+            'color': '#FFFFFF',
+            'font-size': '11px',
+            'font-weight': 700,
+            'text-valign': 'bottom',
+            'text-margin-y': 9,
+            'text-outline-width': 2.5,
+            'text-outline-color': '#060E0B',
+            'border-width': 3.5,
+            'border-color': '#FFFFFF',
+            'underlay-color': 'data(color)',
+            'underlay-padding': 10,
+            'underlay-opacity': 0.45,
+            'z-index': 9999,
+          } as any,
+        },
+        // Selection State
         {
           selector: 'node:selected',
           style: {
+            'label': 'data(label)',
             'border-width': 3.5,
             'border-color': '#06B6D4',
             'underlay-color': '#06B6D4',
-            'underlay-padding': 7,
-            'underlay-opacity': 0.35,
+            'underlay-padding': 8,
+            'underlay-opacity': 0.4,
           } as any,
         },
         {
@@ -286,6 +311,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'border-style': 'dashed',
           },
         },
+        // Base Edge Style: Clean, no text unless hovered
         {
           selector: 'edge',
           style: {
@@ -303,7 +329,29 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
             'text-outline-width': 1.5,
             'text-outline-color': '#060E0B',
             'text-rotation': 'autorotate',
+            'underlay-color': 'data(lineColor)',
+            'underlay-padding': 0,
+            'underlay-opacity': 0,
+            'transition-property': 'width, line-color, target-arrow-color, opacity, underlay-color, underlay-opacity, underlay-padding',
+            'transition-duration': 0.25,
           },
+        },
+        // Interactive Hover State on Edge: reveals label with animation
+        {
+          selector: '.hovered-edge',
+          style: {
+            'label': 'data(label)',
+            'color': '#FFFFFF',
+            'font-size': '10px',
+            'font-weight': 700,
+            'text-outline-width': 2,
+            'text-outline-color': '#060E0B',
+            'width': 3.6,
+            'underlay-color': 'data(lineColor)',
+            'underlay-padding': 6,
+            'underlay-opacity': 0.45,
+            'z-index': 9998,
+          } as any,
         },
         {
           selector: 'edge[?isSevered]',
@@ -327,6 +375,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         {
           selector: '.cross-highlighted-node',
           style: {
+            'label': 'data(label)',
             'border-width': 4,
             'border-color': '#06B6D4',
             'underlay-color': '#06B6D4',
@@ -338,6 +387,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         {
           selector: '.cross-highlighted-edge',
           style: {
+            'label': 'data(label)',
             'width': 4.5,
             'line-color': '#06B6D4',
             'target-arrow-color': '#06B6D4',
@@ -375,9 +425,12 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       }
     });
 
-    // Hover Tooltips
+    // Hover Event Handlers: Add animation classes & display floating tooltip
     cy.on('mouseover', 'node', (evt: EventObject) => {
       const target = evt.target;
+      target.addClass('hovered-node');
+      target.connectedEdges().addClass('hovered-edge');
+
       const data = target.data();
       const nodeData = nodes.find((n) => n.id === data.id);
       if (!nodeData || !containerRef.current) return;
@@ -406,12 +459,16 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       });
     });
 
-    cy.on('mouseout', 'node', () => {
+    cy.on('mouseout', 'node', (evt: EventObject) => {
+      evt.target.removeClass('hovered-node');
+      evt.target.connectedEdges().removeClass('hovered-edge');
       setHoverData(null);
     });
 
     cy.on('mouseover', 'edge', (evt: EventObject) => {
       const target = evt.target;
+      target.addClass('hovered-edge');
+
       const data = target.data();
       const edgeData = edges.find((e) => e.id === data.id);
       if (!edgeData || !containerRef.current) return;
@@ -434,9 +491,27 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
       });
     });
 
-    cy.on('mouseout', 'edge', () => {
+    cy.on('mouseout', 'edge', (evt: EventObject) => {
+      evt.target.removeClass('hovered-edge');
       setHoverData(null);
     });
+
+    // Subtle ambient breathing animation for primary mule hub to keep canvas alive
+    const muleNode = cy.getElementById('ACC_PRIMARY_MULE');
+    let isPulse = false;
+    const pulseInterval = setInterval(() => {
+      if (!cyRef.current) return;
+      isPulse = !isPulse;
+      if (muleNode && muleNode.length > 0 && !muleNode.hasClass('hovered-node')) {
+        muleNode.animate({
+          style: {
+            'underlay-opacity': isPulse ? 0.35 : 0.05,
+            'underlay-padding': isPulse ? 8 : 2,
+          },
+          duration: 900,
+        });
+      }
+    }, 1100);
 
     cyRef.current = cy;
 
@@ -449,6 +524,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      clearInterval(pulseInterval);
       resizeObserver.disconnect();
       cy.destroy();
     };
@@ -642,33 +718,33 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
         {/* Cytoscape Container */}
         <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-        {/* Hover Tooltip Popover */}
+        {/* Animated Hover Tooltip Card (Smooth Fade, Zoom, and Glassmorphic glow) */}
         {hoverData && (
           <div
-            className={`absolute z-30 pointer-events-none p-3 rounded-xl border shadow-xl backdrop-blur-md transition-opacity duration-150 text-xs w-60 ${
+            className={`absolute z-30 pointer-events-none p-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-200 transform scale-100 ease-out text-xs w-64 animate-in fade-in zoom-in-95 ${
               theme === 'dark'
-                ? 'bg-[#0E1715]/95 border-[#1A332B] text-slate-200'
-                : 'bg-white/95 border-slate-200 text-slate-800'
+                ? 'bg-[#091713]/95 border-[#173D30] text-slate-100 shadow-emerald-950/40'
+                : 'bg-white/95 border-slate-200 text-slate-800 shadow-xl'
             }`}
             style={{
-              left: `${Math.min(Math.max(hoverData.x + 15, 10), (containerRef.current?.clientWidth || 500) - 250)}px`,
-              top: `${Math.min(Math.max(hoverData.y - 20, 10), (containerRef.current?.clientHeight || 400) - 180)}px`,
+              left: `${Math.min(Math.max(hoverData.x + 18, 16), (containerRef.current?.clientWidth || 500) - 275)}px`,
+              top: `${Math.min(Math.max(hoverData.y - 30, 16), (containerRef.current?.clientHeight || 400) - 190)}px`,
             }}
           >
             <div className="flex items-start justify-between gap-2 mb-1.5">
-              <span className="font-bold truncate text-[12px]">{hoverData.title}</span>
+              <span className="font-bold truncate text-[13px] tracking-tight">{hoverData.title}</span>
               {hoverData.badge && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold shrink-0 ${hoverData.badgeColor}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 shadow-xs ${hoverData.badgeColor}`}>
                   {hoverData.badge}
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-slate-400 mb-2 truncate">{hoverData.subtitle}</p>
-            <div className="space-y-1 border-t border-inherit pt-1.5 text-[10px]">
+            <p className="text-[11px] text-slate-400 mb-2 truncate">{hoverData.subtitle}</p>
+            <div className="space-y-1.5 border-t border-inherit pt-2 text-[10px]">
               {hoverData.details.map((d, i) => (
                 <div key={i} className="flex items-center justify-between">
                   <span className="text-slate-400">{d.label}:</span>
-                  <span className="font-mono font-medium truncate max-w-[140px]">{d.value}</span>
+                  <span className="font-mono font-semibold truncate max-w-[145px] text-slate-200">{d.value}</span>
                 </div>
               ))}
             </div>
@@ -689,7 +765,7 @@ export const GraphExplorer: React.FC<GraphExplorerProps> = ({
           {/* Toggle Labels */}
           <button
             onClick={() => setShowLabels(!showLabels)}
-            title={showLabels ? 'Hide labels' : 'Show labels'}
+            title={showLabels ? 'Show labels on hover only' : 'Always show labels'}
             className={`p-1.5 rounded-full transition-colors btn-press ${
               showLabels
                 ? 'text-[#34D399]'
