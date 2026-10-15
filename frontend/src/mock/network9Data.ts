@@ -189,7 +189,7 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:31:30',
     timelineIndex: 0,
     ruleTriggered: 'HARDWARE_AUTHENTICATION_BASELINE',
-    curvature: 15,
+    curvature: 0,
   },
   // 2. Transaction 1: Origin Account -> Collect Request
   {
@@ -202,7 +202,7 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:32:00',
     timelineIndex: 0,
     ruleTriggered: 'UNAUTHORIZED_COLLECT_PULL',
-    curvature: -25,
+    curvature: -12,
   },
   // 3. Transaction 2: Collect Request -> Receiving Account
   {
@@ -215,7 +215,7 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:32:41',
     timelineIndex: 1,
     ruleTriggered: 'IMMEDIATE_AGGREGATOR_INFLOW',
-    curvature: -20,
+    curvature: 10,
   },
   // 4. Device association: Shared Device -> Receiving Account
   {
@@ -237,7 +237,7 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:31:00',
     timelineIndex: 2,
     ruleTriggered: 'DEVICE_FARM_COLLUSION',
-    curvature: 30,
+    curvature: 15,
   },
   // 6. Device association: Shared Device -> Mule 2
   {
@@ -248,7 +248,7 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:31:00',
     timelineIndex: 3,
     ruleTriggered: 'DEVICE_FARM_COLLUSION',
-    curvature: 45,
+    curvature: 25,
   },
   // 7. Transaction 3: Receiving Account -> Mule 1
   {
@@ -261,7 +261,7 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:33:22',
     timelineIndex: 2,
     ruleTriggered: 'RAPID_DISPERSION_HOP_1',
-    curvature: -30,
+    curvature: -15,
   },
   // 8. Transaction 4: Receiving Account -> Mule 2
   {
@@ -287,6 +287,6 @@ export const NETWORK_9_EDGES: NetworkEdge[] = [
     timestamp: '09:34:45',
     timelineIndex: 4,
     ruleTriggered: 'FINAL_CASHOUT_TRANSFER',
-    curvature: 25,
+    curvature: -8,
   },
 ];

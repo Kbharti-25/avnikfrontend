@@ -78,32 +78,34 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
     const w = dimensions.width || 950;
     const h = dimensions.height || 520;
 
-    // Relative topological anchors across 5 distinct topological columns with symmetric vertical alignment:
+    // Relative topological anchors across 6 distinct, spacious topological columns with ample breathing room:
     const BASE_LAYOUT: Record<string, { nx: number; ny: number }> = {
-      // Column 1: Origin account & Origin device (vertically aligned)
-      acc_origin:    { nx: 0.10, ny: 0.50 },
-      dev_origin:    { nx: 0.10, ny: 0.82 },
+      // Column 1: Origin stage (Origin account & Origin device with generous vertical spacing)
+      acc_origin:    { nx: 0.08, ny: 0.44 },
+      dev_origin:    { nx: 0.08, ny: 0.78 },
 
-      // Column 2: Collect request (upper conduit)
-      col_req:       { nx: 0.28, ny: 0.26 },
+      // Column 2: Collect request (aligned along primary transaction conduit)
+      col_req:       { nx: 0.25, ny: 0.44 },
 
-      // Column 3: Central Aggregator receiving spine & shared device (directly above)
-      acc_receiving: { nx: 0.48, ny: 0.50 },
-      dev_shared:    { nx: 0.48, ny: 0.18 },
+      // Column 3: Central Aggregator receiving spine & shared device farm (clearly separated)
+      dev_shared:    { nx: 0.43, ny: 0.16 },
+      acc_receiving: { nx: 0.43, ny: 0.52 },
 
-      // Column 4: Symmetrical 3-Mule fan-out (upper +0.28, middle 0.50, lower -0.28)
-      acc_mule_1:    { nx: 0.70, ny: 0.22 },
-      acc_mule_2:    { nx: 0.70, ny: 0.50 },
-      acc_mule_3:    { nx: 0.70, ny: 0.78 },
+      // Column 4: Layer 1 Dispersion (Mule 1 upper branch, Mule 2 lower branch - widely spaced by ~240px)
+      acc_mule_1:    { nx: 0.65, ny: 0.24 },
+      acc_mule_2:    { nx: 0.65, ny: 0.72 },
 
-      // Column 5: Linked terminal account (aligned on central axis)
-      acc_linked:    { nx: 0.90, ny: 0.50 },
+      // Column 5: Layer 2 Cashout (Mule 3 placed downstream to the right of Mule 2, eliminating vertical stacking)
+      acc_mule_3:    { nx: 0.84, ny: 0.72 },
+
+      // Column 6: Linked terminal / auxiliary control account (cleanly in upper right)
+      acc_linked:    { nx: 0.88, ny: 0.28 },
     };
 
-    const padX = Math.max(60, w * 0.08);
-    const padY = Math.max(70, h * 0.14);
-    const usableW = Math.max(300, w - 2 * padX);
-    const usableH = Math.max(260, h - 2 * padY);
+    const padX = Math.max(70, w * 0.06);
+    const padY = Math.max(70, h * 0.10);
+    const usableW = Math.max(500, w - 2 * padX);
+    const usableH = Math.max(340, h - 2 * padY);
 
     return nodes.map((node) => {
       const pos = BASE_LAYOUT[node.id];
@@ -652,12 +654,16 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                   )}
 
                   {/* TEXT LABELS (BELOW NODE) */}
-                  <g transform={`translate(0, ${isHovered ? 40 : 36})`} className="transition-transform duration-200">
+                  <g transform={`translate(0, ${isHovered ? 40 : 36})`} className="transition-transform duration-200 pointer-events-none">
                     {/* Top: Entity role in bold 11px */}
                     <text
                       x="0"
                       y="0"
                       textAnchor="middle"
+                      stroke="#FBF9F4"
+                      strokeWidth="3.5"
+                      strokeLinejoin="round"
+                      paintOrder="stroke fill"
                       className={`text-[11px] select-none transition-colors ${
                         isHovered ? 'font-black drop-shadow-xs' : 'font-bold'
                       } ${
@@ -676,6 +682,10 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                       x="0"
                       y="14"
                       textAnchor="middle"
+                      stroke="#FBF9F4"
+                      strokeWidth="3"
+                      strokeLinejoin="round"
+                      paintOrder="stroke fill"
                       className={`text-[10px] select-none transition-colors ${
                         isHovered ? 'font-bold fill-slate-800' : 'fill-slate-500'
                       } ${node.type === 'device' ? 'font-mono' : ''}`}
