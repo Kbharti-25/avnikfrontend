@@ -9,7 +9,9 @@ import {
   Plus,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  X
 } from 'lucide-react';
 
 export interface ComplaintItem {
@@ -206,38 +208,53 @@ export const InvestigationIntakeScreen: React.FC<InvestigationIntakeScreenProps>
           </button>
         </div>
 
-        {/* 3. Search & Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-sm min-w-[220px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search complaint or transaction"
-                className="w-full pl-9.5 pr-4 py-2 bg-white border border-[#E2DFD7] rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#007065] focus:ring-1 focus:ring-[#007065] transition-all shadow-2xs"
-              />
-            </div>
-
-            {/* Status Dropdown */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3.5 py-2 bg-white border border-[#E2DFD7] rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#007065] shadow-2xs cursor-pointer"
-            >
-              <option value="all">All statuses</option>
-              <option value="Open">Open</option>
-              <option value="In review">In review</option>
-              <option value="Resolved">Resolved</option>
-            </select>
+        {/* 3. Search & Filter Bar (Clean, Uncluttered, Spacious) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by complaint ID or transaction reference..."
+              className="w-full pl-10 pr-9 py-2.5 bg-white border border-[#E2DFD7] hover:border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#007065] focus:ring-2 focus:ring-[#007065]/10 transition-all shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Record Count */}
-          <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-            {filteredComplaints.length} records
-          </span>
+          {/* Right side: Status Filter & Record Count */}
+          <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+            {/* Status Dropdown */}
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="pl-3.5 pr-8 py-2.5 bg-white border border-[#E2DFD7] hover:border-slate-300 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-[#007065] focus:ring-2 focus:ring-[#007065]/10 shadow-2xs cursor-pointer appearance-none"
+              >
+                <option value="all">All statuses</option>
+                <option value="Open">Open</option>
+                <option value="In review">In review</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
+            </div>
+
+            {/* Record Count Badge */}
+            <span className="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold whitespace-nowrap border border-slate-200 shadow-2xs">
+              {filteredComplaints.length} {filteredComplaints.length === 1 ? 'record' : 'records'}
+            </span>
+          </div>
         </div>
 
         {/* 4. Table / Feed Card */}

@@ -33,6 +33,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   // Hover state for tooltip micro-card
   const [hoveredNode, setHoveredNode] = useState<{
@@ -156,25 +157,104 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
     setPan({ x: 0, y: 0 });
   };
 
-  // Pan handlers
+  // Robust Pan handlers with window-level event tracking so dragging never drops
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Only drag when clicking background, not nodes
-    if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'graph-canvas-bg') {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-    }
+    // Only drag when clicking canvas background or non-node elements
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-node="true"]')) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
+  useEffect(() => {
+    const onWindowMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
       setPan({
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y,
       });
+    };
+
+    const onWindowMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', onWindowMouseMove);
+      window.addEventListener('mouseup', onWindowMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', onWindowMouseMove);
+      window.removeEventListener('mouseup', onWindowMouseUp);
+    };
+  }, [isDragging, dragStart]);
+
+  // Auto Scroll / Trackpad 2-finger Pan & Wheel Zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      // Pinch / Ctrl + Wheel: Zoom
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      setZoom((prev) => Math.min(Math.max(prev * zoomFactor, 0.4), 2.5));
+    } else {
+      // Auto Scroll / Pan in X and Y
+      setPan((prev) => ({
+        x: Math.round(prev.x - e.deltaX * 0.9),
+        y: Math.round(prev.y - e.deltaY * 0.9),
+      }));
     }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  // Auto-scroll camera to center a node smoothly
+  const autoCenterNode = (targetNode: NetworkNode) => {
+    const w = dimensions.width || 950;
+    const h = dimensions.height || 520;
+    setPan({
+      x: Math.round(w / 2 - targetNode.x * zoom),
+      y: Math.round(h / 2 - targetNode.y * zoom),
+    });
+  };
+
+  // Auto-scroll when selectedNodeId changes
+  useEffect(() => {
+    if (selectedNodeId) {
+      const found = distributedNodes.find((n) => n.id === selectedNodeId);
+      if (found) {
+        autoCenterNode(found);
+      }
+    }
+  }, [selectedNodeId, zoom, dimensions]);
+
+  // Auto-scroll during timeline changes
+  useEffect(() => {
+    if (!selectedNodeId && dimensions.width > 0) {
+      const stepTargetMap: Record<number, string> = {
+        0: 'col_req',
+        1: 'acc_receiving',
+        2: 'acc_mule_1',
+        3: 'acc_mule_2',
+        4: 'acc_mule_3',
+      };
+      const targetId = stepTargetMap[timelineIndex];
+      const found = distributedNodes.find((n) => n.id === targetId);
+      if (found) {
+        const w = dimensions.width;
+        setPan((prev) => ({
+          x: Math.round(w * 0.5 - found.x * zoom),
+          y: prev.y,
+        }));
+      }
+    }
+  }, [timelineIndex, zoom, dimensions]);
+
+  // Sort nodes so hovered node renders on top of all other nodes and edges
+  const sortedNodes = useMemo(() => {
+    if (!hoveredNodeId) return distributedNodes;
+    return [...distributedNodes].sort((a, b) => {
+      if (a.id === hoveredNodeId) return 1;
+      if (b.id === hoveredNodeId) return -1;
+      return 0;
+    });
+  }, [distributedNodes, hoveredNodeId]);
 
   // Helper to compute smooth quadratic curved bezier path
   const computeCurvedPath = (src: NetworkNode, tgt: NetworkNode, curvature = 0) => {
@@ -202,11 +282,12 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full flex flex-col overflow-hidden select-none"
+      className={`relative w-full h-full flex flex-col overflow-hidden select-none ${
+        isDragging ? 'cursor-grabbing' : 'cursor-grab'
+      }`}
       style={{ backgroundColor: '#FBF9F4' }}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      onWheel={handleWheel}
     >
       {/* 1. TOP SUB-HEADER INSIDE GRAPH */}
       <div className="absolute top-0 left-0 right-0 z-20 px-6 py-3.5 flex items-center justify-between border-b border-[#E8E4D8]/80 bg-[#FBF9F4]/90 backdrop-blur-md">
@@ -409,20 +490,23 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
 
           {/* ================= NODES LAYER (UNIFORMLY DISTRIBUTED) ================= */}
           <g className="nodes-layer">
-            {distributedNodes.map((node) => {
+            {sortedNodes.map((node) => {
               const isVisibleInTimeline = isNodeActiveInTimeline(node);
               const isSelected = selectedNodeId === node.id;
+              const isHovered = hoveredNodeId === node.id;
+              const isOtherHovered = hoveredNodeId !== null && !isHovered;
               const isDimmed = activeNeighborIds !== null && !activeNeighborIds.has(node.id);
               const isFrozen = frozenNodeIds.has(node.id);
 
               return (
                 <g
                   key={node.id}
+                  data-node="true"
                   transform={`translate(${node.x}, ${node.y})`}
                   className="cursor-pointer group"
                   style={{
-                    opacity: !isVisibleInTimeline ? 0 : isDimmed ? 0.2 : 1,
-                    transition: 'opacity 0.25s ease, transform 0.2s ease',
+                    opacity: !isVisibleInTimeline ? 0 : isDimmed ? 0.2 : isOtherHovered ? 0.55 : 1,
+                    transition: 'opacity 0.2s ease, transform 0.2s ease',
                     pointerEvents: !isVisibleInTimeline ? 'none' : 'auto',
                   }}
                   onClick={(e) => {
@@ -430,6 +514,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                     onSelectNode(isSelected ? null : node);
                   }}
                   onMouseEnter={(e) => {
+                    setHoveredNodeId(node.id);
                     const rect = containerRef.current?.getBoundingClientRect();
                     const screenX = e.clientX - (rect?.left || 0);
                     const screenY = e.clientY - (rect?.top || 0);
@@ -441,7 +526,10 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                       connectionCount: count,
                     });
                   }}
-                  onMouseLeave={() => setHoveredNode(null)}
+                  onMouseLeave={() => {
+                    setHoveredNodeId(null);
+                    setHoveredNode(null);
+                  }}
                 >
                   {/* SELECTION HALO */}
                   {isSelected && (
@@ -458,9 +546,30 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                     />
                   )}
 
-                  {/* 1. UPI ACCOUNT NODE: Clean circular badge (48px diameter) with emerald ring */}
+                  {/* STANDOUT HOVER AURA: Distinctive glowing aura ring when cursor hovers */}
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="34"
+                    fill="none"
+                    className={`transition-all duration-200 pointer-events-none ${
+                      isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+                    } ${
+                      node.type === 'mule'
+                        ? 'stroke-rose-500 fill-rose-500/20'
+                        : node.type === 'collect'
+                        ? 'stroke-amber-500 fill-amber-500/20'
+                        : node.type === 'device'
+                        ? 'stroke-slate-400 fill-slate-500/15'
+                        : 'stroke-[#007065] fill-[#007065]/20'
+                    }`}
+                    strokeWidth="2.5"
+                    strokeDasharray="4 2"
+                  />
+
+                  {/* 1. UPI ACCOUNT NODE: Clean circular badge (48px diameter) with emerald ring (scales up 1.25x on hover) */}
                   {node.type === 'upi' && (
-                    <g className="transition-transform duration-150 group-hover:scale-108">
+                    <g className="transition-transform duration-200 ease-out group-hover:scale-125">
                       <circle
                         cx="0"
                         cy="0"
@@ -468,7 +577,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                         fill="#FFFFFF"
                         stroke="#007065"
                         strokeWidth="2"
-                        filter="drop-shadow(0 4px 10px rgba(0, 112, 101, 0.12))"
+                        filter="drop-shadow(0 6px 14px rgba(0, 112, 101, 0.25))"
                       />
                       <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
                         <div className="w-full h-full flex items-center justify-center text-[#007065]">
@@ -478,9 +587,9 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                     </g>
                   )}
 
-                  {/* 2. DEVICE NODE: Symmetrical rounded badge (48px × 48px, rx: 12px) */}
+                  {/* 2. DEVICE NODE: Symmetrical rounded badge (48px × 48px, rx: 12px) (scales up 1.25x on hover) */}
                   {node.type === 'device' && (
-                    <g className="transition-transform duration-150 group-hover:scale-108">
+                    <g className="transition-transform duration-200 ease-out group-hover:scale-125">
                       <rect
                         x="-24"
                         y="-24"
@@ -490,7 +599,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                         fill="#F8FAFC"
                         stroke="#94A3B8"
                         strokeWidth="1.5"
-                        filter="drop-shadow(0 4px 8px rgba(0,0,0,0.06))"
+                        filter="drop-shadow(0 6px 12px rgba(0,0,0,0.12))"
                       />
                       <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
                         <div className="w-full h-full flex items-center justify-center text-slate-600">
@@ -500,9 +609,9 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                     </g>
                   )}
 
-                  {/* 3. COLLECT REQUEST NODE: Symmetrical rounded square (48px × 48px, rx: 12px) in amber */}
+                  {/* 3. COLLECT REQUEST NODE: Symmetrical rounded square (48px × 48px, rx: 12px) (scales up 1.25x on hover) */}
                   {node.type === 'collect' && (
-                    <g className="transition-transform duration-150 group-hover:scale-108">
+                    <g className="transition-transform duration-200 ease-out group-hover:scale-125">
                       <rect
                         x="-24"
                         y="-24"
@@ -512,7 +621,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                         fill="#FEF3C7"
                         stroke="#D97706"
                         strokeWidth="1.5"
-                        filter="drop-shadow(0 4px 10px rgba(217, 119, 6, 0.15))"
+                        filter="drop-shadow(0 6px 14px rgba(217, 119, 6, 0.25))"
                       />
                       <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
                         <div className="w-full h-full flex items-center justify-center text-amber-700">
@@ -522,9 +631,9 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                     </g>
                   )}
 
-                  {/* 4. POTENTIAL MULE ACCOUNT NODE: Circular badge (48px diameter) with soft rose tint & coral ring */}
+                  {/* 4. POTENTIAL MULE ACCOUNT NODE: Circular badge (48px diameter) with coral ring (scales up 1.25x on hover) */}
                   {node.type === 'mule' && (
-                    <g className="transition-transform duration-150 group-hover:scale-108">
+                    <g className="transition-transform duration-200 ease-out group-hover:scale-125">
                       <circle
                         cx="0"
                         cy="0"
@@ -532,7 +641,7 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                         fill="#FFF1F2"
                         stroke="#E11D48"
                         strokeWidth="2"
-                        filter="drop-shadow(0 4px 12px rgba(225, 29, 72, 0.16))"
+                        filter="drop-shadow(0 6px 16px rgba(225, 29, 72, 0.28))"
                       />
                       <foreignObject x="-24" y="-24" width="48" height="48" className="pointer-events-none">
                         <div className="w-full h-full flex items-center justify-center text-rose-600">
@@ -543,18 +652,20 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                   )}
 
                   {/* TEXT LABELS (BELOW NODE) */}
-                  <g transform="translate(0, 36)">
+                  <g transform={`translate(0, ${isHovered ? 40 : 36})`} className="transition-transform duration-200">
                     {/* Top: Entity role in bold 11px */}
                     <text
                       x="0"
                       y="0"
                       textAnchor="middle"
-                      className={`text-[11px] font-bold select-none ${
+                      className={`text-[11px] select-none transition-colors ${
+                        isHovered ? 'font-black drop-shadow-xs' : 'font-bold'
+                      } ${
                         node.type === 'mule'
-                          ? 'fill-rose-700'
+                          ? isHovered ? 'fill-rose-800' : 'fill-rose-700'
                           : node.type === 'collect'
-                          ? 'fill-amber-900'
-                          : 'fill-slate-800'
+                          ? isHovered ? 'fill-amber-950' : 'fill-amber-900'
+                          : isHovered ? 'fill-slate-950' : 'fill-slate-800'
                       }`}
                     >
                       {isFrozen ? `${node.role} (FROZEN)` : node.role}
@@ -565,9 +676,9 @@ export const NetworkGraphCanvas: React.FC<NetworkGraphCanvasProps> = ({
                       x="0"
                       y="14"
                       textAnchor="middle"
-                      className={`text-[10px] select-none ${
-                        node.type === 'device' ? 'font-mono fill-slate-500' : 'fill-slate-500'
-                      }`}
+                      className={`text-[10px] select-none transition-colors ${
+                        isHovered ? 'font-bold fill-slate-800' : 'fill-slate-500'
+                      } ${node.type === 'device' ? 'font-mono' : ''}`}
                     >
                       {node.handle}
                     </text>
